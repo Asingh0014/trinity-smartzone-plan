@@ -138,6 +138,16 @@ class vSZ_calls:
 		r = requests.delete(url, verify=False)
 		return r
             
+	# Get zone level AP model specific configuration (returns the raw response)
+	def getZoneModelConfig(self, host, zoneID, model, token):
+		url = "https://" + host + ":8443" + "/wsg/api/public/v11_0/rkszones/" + zoneID + "/apmodel/" + model + "?serviceTicket=" + token
+		return requests.get(url, verify=False)
+
+	# Get AP Group level AP model specific configuration that overrides the zone (returns the raw response)
+	def getAPGroupModelConfig(self, host, zoneID, apGroupID, model, token):
+		url = "https://" + host + ":8443" + "/wsg/api/public/v11_0/rkszones/" + zoneID + "/apgroups/" + apGroupID + "/apmodel/" + model + "?serviceTicket=" + token
+		return requests.get(url, verify=False)
+
 	# Create client traffic by Wlan (uses pagination)
 	def getTrafficByWlan(self, host, zoneId, wlanName, limit, token):
 		page = 1
