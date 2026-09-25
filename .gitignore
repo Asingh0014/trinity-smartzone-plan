@@ -1,0 +1,4 @@
+# Track only the Trinity plan; everything else in this folder stays local
+*
+!.gitignore
+!Trinity College Melbourne - SmartZone Implementation Plan.docx
