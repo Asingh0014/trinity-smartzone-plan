@@ -5,3 +5,4 @@
 !vsz_tools.py
 !view_ap_port_config.py
 !view_ap_port_config_trinity.py
+!ap_model_overrides.py

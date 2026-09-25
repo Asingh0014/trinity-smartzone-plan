@@ -110,9 +110,33 @@ class vSZ_calls:
 
 	def getAPGroupList(self, host, zoneID, token):
 		url = "https://" + host + ":8443" + "/wsg/api/public/v11_0/rkszones/" + zoneID + "/apgroups?listSize=500&serviceTicket=" + token
-		r = requests.get(url, verify=False)	
-		
+		r = requests.get(url, verify=False)
+
 		return r.json()
+
+	# Get zone level model specific config (e.g. model = "H510")
+	def getZoneAPModel(self, host, zoneID, model, token):
+		url = "https://" + host + ":8443" + "/wsg/api/public/v11_0/rkszones/" + zoneID + "/apmodel/" + model + "?serviceTicket=" + token
+		r = requests.get(url, verify=False)
+		return r
+
+	# Get AP group model specific override (empty if the group uses the zone config)
+	def getAPGroupAPModel(self, host, zoneID, apGroupID, model, token):
+		url = "https://" + host + ":8443" + "/wsg/api/public/v11_0/rkszones/" + zoneID + "/apgroups/" + apGroupID + "/apmodel/" + model + "?serviceTicket=" + token
+		r = requests.get(url, verify=False)
+		return r
+
+	# Remove AP group model specific override (group falls back to the zone config)
+	def deleteAPGroupAPModel(self, host, zoneID, apGroupID, model, token):
+		url = "https://" + host + ":8443" + "/wsg/api/public/v11_0/rkszones/" + zoneID + "/apgroups/" + apGroupID + "/apmodel/" + model + "?serviceTicket=" + token
+		r = requests.delete(url, verify=False)
+		return r
+
+	# Remove AP level model specific override (AP falls back to its AP group / zone config)
+	def deleteAPSpecific(self, host, mac, token):
+		url = "https://" + host + ":8443" + "/wsg/api/public/v11_0/aps/" + mac + "/specific?serviceTicket=" + token
+		r = requests.delete(url, verify=False)
+		return r
             
 	# Create client traffic by Wlan (uses pagination)
 	def getTrafficByWlan(self, host, zoneId, wlanName, limit, token):
