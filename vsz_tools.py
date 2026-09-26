@@ -138,6 +138,18 @@ class vSZ_calls:
 		r = requests.delete(url, verify=False)
 		return r
             
+	# Get a single AP Group's configuration
+	def getAPGroup(self, host, zoneID, apGroupID, token):
+		url = "https://" + host + ":8443" + "/wsg/api/public/v11_0/rkszones/" + zoneID + "/apgroups/" + apGroupID + "?serviceTicket=" + token
+		r = requests.get(url, verify=False)
+		return r.json()
+
+	# Get WLAN Groups in a zone
+	def getWlanGroupList(self, host, zoneID, token):
+		url = "https://" + host + ":8443" + "/wsg/api/public/v11_0/rkszones/" + zoneID + "/wlangroups?listSize=1000&serviceTicket=" + token
+		r = requests.get(url, verify=False)
+		return r.json()
+
 	# Get zone level AP model specific configuration (returns the raw response)
 	def getZoneModelConfig(self, host, zoneID, model, token):
 		url = "https://" + host + ":8443" + "/wsg/api/public/v11_0/rkszones/" + zoneID + "/apmodel/" + model + "?serviceTicket=" + token
