@@ -1,4 +1,12 @@
-# Track only the Trinity plan; everything else in this folder stays local
+# Track only the Trinity plan and the SmartZone scripts; everything else in this folder stays local
 *
 !.gitignore
 !Trinity College Melbourne - SmartZone Implementation Plan.docx
+!vsz_tools.py
+!view_ap_port_config.py
+!view_ap_port_config_trinity.py
+!ap_model_overrides.py
+!view_apgroup_port_overrides.py
+!student-wired-2026-task-list.md
+!Student Wired 2026 - Task List.docx
+!view_apgroup_wlan_groups.py
