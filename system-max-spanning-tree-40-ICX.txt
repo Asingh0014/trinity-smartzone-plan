@@ -1,6 +1,7 @@
 !=============================================================================
 ! 200V switches - raise spanning-tree limit to 40 (system-max spanning-tree 40)
 ! Ruckus ICX, FastIron 10.0.10g
+! Change window: Friday 9 October 2026 from 6:00 pm, before the VLAN cutover
 !=============================================================================
 !
 ! Why
@@ -16,8 +17,8 @@
 !   reload in a maintenance window. Reloading a stack restarts every unit.
 !
 ! Order
-!   Access switches first, one at a time, smallest first. The core goes last,
-!   in its own window: reloading it cuts every 200V switch off until it is back.
+!   Access switches first, one at a time, smallest first. The core goes last:
+!   reloading it cuts every 200V switch off until it is back.
 !   LT2-2 and LT2-3 connect through LT2-1, so they also drop while LT2-1 reloads.
 !   switch-200V-8 and Tutorial-6.03 have no remote access: run their sections
 !   over a console cable on site.

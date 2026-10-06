@@ -1,6 +1,7 @@
 !=============================================================================
 ! 200V VLAN migration - main cutover, all switches
 ! Ruckus ICX, FastIron 10.0.10g
+! Change window: Friday 9 October 2026 from 6:00 pm (outage window to Sunday 11 October, 5:00 pm)
 ! Source: 200V Device Port List.xlsx, 200V Devices tab, Status = To do
 !=============================================================================
 !
@@ -30,7 +31,7 @@
 !   - Running-config backups of each switch: taken via SmartZone on 6 Oct (done)
 !   - Trinity to confirm DHCP reservations are in place on the new subnets
 !   - lv6: 2600 and 2700 run without spanning-tree until the system-max change
-!     (system-max-spanning-tree-40-ICX.txt) is done. Do that first if possible
+!     (system-max-spanning-tree-40-ICX.txt) is done. It is done first on the night
 !   - Tutorial-6.03: no remote access. Its section is run over a console cable
 !     on site. Paste one block at a time: the console is slower than SSH
 !
