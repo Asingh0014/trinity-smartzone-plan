@@ -1,0 +1,234 @@
+!=============================================================================
+! switch-200V-LT2-1 - add new VLANs to the trunks to LT2-2 and LT2-3
+! Ruckus ICX8200-24P, FastIron 10.0.10g
+! Done ahead of the main 200V cutover
+!=============================================================================
+!
+! Why
+!   LT2-2 and LT2-3 hang off LT2-1 (confirmed by LLDP):
+!     LT2-1 1/1/23  <->  switch-200V-LT2-2 1/1/12
+!     LT2-1 1/1/24  <->  switch-200V-LT2-3 1/1/12
+!   Both switches already have the new VLANs tagged on their 1/1/12, but
+!   LT2-1 1/1/23 and 1/1/24 only carry the old VLANs (100, 1212, 1213, 1230,
+!   1240, 1250, 1271, 1272, 1273). This change tags the 22 new VLANs on both
+!   ports so LT2-2 and LT2-3 can reach the core on them.
+!
+! What changes
+!   Adds tagged membership only. All 22 VLANs already exist on LT2-1 and are
+!   already tagged on its uplink to the core (lag 10). Nothing is removed and
+!   no untagged VLAN changes, so existing traffic on the old VLANs is not
+!   touched. 2311 and 2321 are not added (not used on LT2-2 or LT2-3).
+!
+! Expected impact
+!   None for current users. Spanning tree runs per VLAN, so only the newly
+!   added VLANs go through listening/learning (about 30 seconds) on these two
+!   ports. LT2-2 and LT2-3 have no devices on the new VLANs yet.
+!
+! New VLANs added (tagged on 1/1/23 and 1/1/24)
+!   2000  VL-netmgmt-01
+!   2010  VL-wifimgmt-01
+!   2020  VL-servers-01
+!   2100  VL-staff-wired-01
+!   2200  VL-student-wired-01
+!   2300  VL-wifi-01
+!   2310  VL-wifi-staff-01
+!   2320  VL-wifi-student-01
+!   2400  VL-byod-01
+!   2500  VL-iot-01
+!   2510  VL-bac-01
+!   2520  VL-bms-01
+!   2530  VL-library-01
+!   2600  VL-cctv-01
+!   2700  VL-av-01
+!   2800  VL-print-01
+!   2810  VL-comms-01
+!   2900  VL-guest-01
+!   2950  VL-nac-restricted-01
+!   2951  VL-nac-onboard-01
+!   2952  VL-nac-remediate-01
+!   2953  VL-nac-fallback-01
+!=============================================================================
+
+!-----------------------------------------------------------------------------
+! 1. PRE-CHECKS (exec mode, read-only)
+!-----------------------------------------------------------------------------
+! Confirm LLDP still shows LT2-2 on 1/1/23 and LT2-3 on 1/1/24
+show lldp neighbors
+! Both ports up
+show interfaces brief ethernet 1/1/23
+show interfaces brief ethernet 1/1/24
+! Current VLANs on each port (expect old VLANs only, tagged)
+show vlan ethernet 1/1/23
+show vlan ethernet 1/1/24
+! Save a copy of the running config before changing it
+! copy running-config tftp <server> switch-200V-LT2-1-pre-trunk.cfg
+!
+!-----------------------------------------------------------------------------
+! 2. CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 2000
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2010
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2020
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2100
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2200
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2300
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2310
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2320
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2400
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2500
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2510
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2520
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2530
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2600
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2700
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2800
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2810
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2900
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2950
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2951
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2952
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2953
+ tagged ethernet 1/1/23 to 1/1/24
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! 3. VERIFY
+!-----------------------------------------------------------------------------
+! Each port should now list the old VLANs plus the 22 new ones, all tagged
+show vlan ethernet 1/1/23
+show vlan ethernet 1/1/24
+! Ports should be forwarding on the new VLANs (check a couple)
+show spanning-tree vlan 2010
+show spanning-tree vlan 2100
+show spanning-tree vlan 2700
+! Uplinks to LT2-2 and LT2-3 still up, LLDP unchanged
+show interfaces brief ethernet 1/1/23
+show interfaces brief ethernet 1/1/24
+show lldp neighbors
+! Existing devices on LT2-1 still learned on their old VLANs
+show mac-address vlan 1230
+! When everything checks out:
+write memory
+!
+!-----------------------------------------------------------------------------
+! 4. ROLLBACK (removes only what step 2 added)
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 2000
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2010
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2020
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2100
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2200
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2300
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2310
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2320
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2400
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2500
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2510
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2520
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2530
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2600
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2700
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2800
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2810
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2900
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2950
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2951
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2952
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+vlan 2953
+ no tagged ethernet 1/1/23 to 1/1/24
+ exit
+end
+show vlan ethernet 1/1/23
+show vlan ethernet 1/1/24
+write memory
+!
+!=============================================================================
+! END
+!=============================================================================

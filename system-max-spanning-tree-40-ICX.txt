@@ -1,0 +1,479 @@
+!=============================================================================
+! 200V switches - raise spanning-tree limit to 40 (system-max spanning-tree 40)
+! Ruckus ICX, FastIron 10.0.10g
+! Change window: Friday 9 October 2026 from 6:00 pm, before the VLAN cutover
+!=============================================================================
+!
+! Why
+!   ICX switches run spanning-tree on at most 32 VLANs by default. Most 200V
+!   switches now have more VLANs than that, so the extra VLANs run without
+!   spanning-tree. On lv6 that includes 2600 (CCTV) and 2700 (AV).
+!   40 covers the largest switch (35 VLANs) and matches what lv4 already has.
+!
+! IMPORTANT: the new limit only takes effect after a reload
+!   system-max values are read at boot. lv4 already has 'system-max
+!   spanning-tree 40' saved but still runs spanning-tree on exactly 32 VLANs,
+!   which shows the reload has not happened there. Each switch below needs a
+!   reload in a maintenance window. Reloading a stack restarts every unit.
+!
+! Order
+!   Access switches first, one at a time, smallest first. The core goes last:
+!   reloading it cuts every 200V switch off until it is back.
+!   LT2-2 and LT2-3 connect through LT2-1, so they also drop while LT2-1 reloads.
+!   switch-200V-8 and Tutorial-6.03 have no remote access: run their sections
+!   over a console cable on site.
+!
+! Switch                       Mgmt IP          VLANs  STP on  Current limit
+!   switch-200V-LT2-2          192.168.122.13      32      32  32 (default)
+!   switch-200V-LT2-3          192.168.122.14      32      32  32 (default)
+!   switch-200V-8              192.168.122.16      28      28  32 (default)
+!   switch-200V-Tutorial-6.03  192.168.122.15      26      26  32 (default)
+!   switch-200V-LT2-1          192.168.122.12      34      32  32 (default)
+!   switch-200V-stack-lv3      192.168.122.22      35      32  32 (default)
+!   switch-200V-stack-lv4      192.168.122.21      35      32  40 saved, not active until reload
+!   switch-200V-stack-lv6      192.168.122.11      35      32  32 (default)
+!   trinity200V-core           10.20.8.2           34      32  32 (default)
+!=============================================================================
+
+!=============================================================================
+! switch-200V-LT2-2  (192.168.122.13, ICX7150-C12)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! PRE-CHECK
+!-----------------------------------------------------------------------------
+show default values
+! Note the 'spanning-tree' line: current value and the value used at next boot
+show running-config | include system-max
+show span | include VLAN
+!
+!-----------------------------------------------------------------------------
+! CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+system-max spanning-tree 40
+end
+write memory
+show default values
+! The next-boot value should now read 40
+!
+!-----------------------------------------------------------------------------
+! RELOAD (maintenance window)
+!-----------------------------------------------------------------------------
+reload
+! Answer y to confirm. Wait for the switch to come back
+!
+!-----------------------------------------------------------------------------
+! VERIFY (after reload)
+!-----------------------------------------------------------------------------
+show default values
+! Current spanning-tree value should be 40
+show running-config | include system-max
+show interfaces brief
+show lldp neighbors
+!
+!-----------------------------------------------------------------------------
+! ROLLBACK
+!-----------------------------------------------------------------------------
+configure terminal
+no system-max spanning-tree 40
+! returns to the default of 32
+end
+write memory
+! A reload is needed for the old limit to apply again
+
+!=============================================================================
+! switch-200V-LT2-3  (192.168.122.14, ICX7150-C12)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! PRE-CHECK
+!-----------------------------------------------------------------------------
+show default values
+! Note the 'spanning-tree' line: current value and the value used at next boot
+show running-config | include system-max
+show span | include VLAN
+!
+!-----------------------------------------------------------------------------
+! CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+system-max spanning-tree 40
+end
+write memory
+show default values
+! The next-boot value should now read 40
+!
+!-----------------------------------------------------------------------------
+! RELOAD (maintenance window)
+!-----------------------------------------------------------------------------
+reload
+! Answer y to confirm. Wait for the switch to come back
+!
+!-----------------------------------------------------------------------------
+! VERIFY (after reload)
+!-----------------------------------------------------------------------------
+show default values
+! Current spanning-tree value should be 40
+show running-config | include system-max
+show interfaces brief
+show lldp neighbors
+!
+!-----------------------------------------------------------------------------
+! ROLLBACK
+!-----------------------------------------------------------------------------
+configure terminal
+no system-max spanning-tree 40
+! returns to the default of 32
+end
+write memory
+! A reload is needed for the old limit to apply again
+
+!=============================================================================
+! switch-200V-8  (192.168.122.16, ICX7150-C12)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! PRE-CHECK
+!-----------------------------------------------------------------------------
+show default values
+! Note the 'spanning-tree' line: current value and the value used at next boot
+show running-config | include system-max
+show span | include VLAN
+!
+!-----------------------------------------------------------------------------
+! CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+system-max spanning-tree 40
+end
+write memory
+show default values
+! The next-boot value should now read 40
+!
+!-----------------------------------------------------------------------------
+! RELOAD (maintenance window)
+!-----------------------------------------------------------------------------
+reload
+! Answer y to confirm. Wait for the switch to come back
+!
+!-----------------------------------------------------------------------------
+! VERIFY (after reload)
+!-----------------------------------------------------------------------------
+show default values
+! Current spanning-tree value should be 40
+show running-config | include system-max
+show interfaces brief
+show lldp neighbors
+!
+!-----------------------------------------------------------------------------
+! ROLLBACK
+!-----------------------------------------------------------------------------
+configure terminal
+no system-max spanning-tree 40
+! returns to the default of 32
+end
+write memory
+! A reload is needed for the old limit to apply again
+
+!=============================================================================
+! switch-200V-Tutorial-6.03  (192.168.122.15, ICX7150-C12)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! PRE-CHECK
+!-----------------------------------------------------------------------------
+show default values
+! Note the 'spanning-tree' line: current value and the value used at next boot
+show running-config | include system-max
+show span | include VLAN
+!
+!-----------------------------------------------------------------------------
+! CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+system-max spanning-tree 40
+end
+write memory
+show default values
+! The next-boot value should now read 40
+!
+!-----------------------------------------------------------------------------
+! RELOAD (maintenance window)
+!-----------------------------------------------------------------------------
+reload
+! Answer y to confirm. Wait for the switch to come back
+!
+!-----------------------------------------------------------------------------
+! VERIFY (after reload)
+!-----------------------------------------------------------------------------
+show default values
+! Current spanning-tree value should be 40
+show running-config | include system-max
+show interfaces brief
+show lldp neighbors
+!
+!-----------------------------------------------------------------------------
+! ROLLBACK
+!-----------------------------------------------------------------------------
+configure terminal
+no system-max spanning-tree 40
+! returns to the default of 32
+end
+write memory
+! A reload is needed for the old limit to apply again
+
+!=============================================================================
+! switch-200V-LT2-1  (192.168.122.12, ICX8200-24P)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! PRE-CHECK
+!-----------------------------------------------------------------------------
+show default values
+! Note the 'spanning-tree' line: current value and the value used at next boot
+show running-config | include system-max
+show span | include VLAN
+!
+!-----------------------------------------------------------------------------
+! CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+system-max spanning-tree 40
+end
+write memory
+show default values
+! The next-boot value should now read 40
+!
+!-----------------------------------------------------------------------------
+! RELOAD (maintenance window)
+!-----------------------------------------------------------------------------
+reload
+! Answer y to confirm. Wait for the switch to come back
+!
+!-----------------------------------------------------------------------------
+! VERIFY (after reload)
+!-----------------------------------------------------------------------------
+show default values
+! Current spanning-tree value should be 40
+show running-config | include system-max
+show interfaces brief
+show lldp neighbors
+!
+!-----------------------------------------------------------------------------
+! ROLLBACK
+!-----------------------------------------------------------------------------
+configure terminal
+no system-max spanning-tree 40
+! returns to the default of 32
+end
+write memory
+! A reload is needed for the old limit to apply again
+
+!=============================================================================
+! switch-200V-stack-lv3  (192.168.122.22, 5 x ICX8200 stack)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! PRE-CHECK
+!-----------------------------------------------------------------------------
+show default values
+! Note the 'spanning-tree' line: current value and the value used at next boot
+show running-config | include system-max
+show span | include VLAN
+!
+!-----------------------------------------------------------------------------
+! CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+system-max spanning-tree 40
+end
+write memory
+show default values
+! The next-boot value should now read 40
+!
+!-----------------------------------------------------------------------------
+! RELOAD (maintenance window)
+!-----------------------------------------------------------------------------
+reload
+! Answer y to confirm. Wait for the switch and all stack units to come back
+!
+!-----------------------------------------------------------------------------
+! VERIFY (after reload)
+!-----------------------------------------------------------------------------
+show stack
+show default values
+! Current spanning-tree value should be 40
+show running-config | include system-max
+show interfaces brief
+show lldp neighbors
+!
+!-----------------------------------------------------------------------------
+! ROLLBACK
+!-----------------------------------------------------------------------------
+configure terminal
+no system-max spanning-tree 40
+! returns to the default of 32
+end
+write memory
+! A reload is needed for the old limit to apply again
+
+!=============================================================================
+! switch-200V-stack-lv4  (192.168.122.21, 5 x ICX8200 stack)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! PRE-CHECK
+!-----------------------------------------------------------------------------
+show default values
+! Note the 'spanning-tree' line: current value and the value used at next boot
+show running-config | include system-max
+show span | include VLAN
+!
+!-----------------------------------------------------------------------------
+! CHANGE
+!-----------------------------------------------------------------------------
+! No config change: lv4 already has 'system-max spanning-tree 40' saved.
+! Confirm the pre-check shows 40 as the next-boot value, then reload.
+!
+!-----------------------------------------------------------------------------
+! RELOAD (maintenance window)
+!-----------------------------------------------------------------------------
+reload
+! Answer y to confirm. Wait for the switch and all stack units to come back
+!
+!-----------------------------------------------------------------------------
+! VERIFY (after reload)
+!-----------------------------------------------------------------------------
+show stack
+show default values
+! Current spanning-tree value should be 40
+show running-config | include system-max
+show interfaces brief
+show lldp neighbors
+!
+!-----------------------------------------------------------------------------
+! ROLLBACK
+!-----------------------------------------------------------------------------
+! Nothing to roll back: 40 was already saved before this change.
+
+!=============================================================================
+! switch-200V-stack-lv6  (192.168.122.11, 7 x ICX8200 stack)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! PRE-CHECK
+!-----------------------------------------------------------------------------
+show default values
+! Note the 'spanning-tree' line: current value and the value used at next boot
+show running-config | include system-max
+show span | include VLAN
+!
+!-----------------------------------------------------------------------------
+! CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+system-max spanning-tree 40
+end
+write memory
+show default values
+! The next-boot value should now read 40
+!
+!-----------------------------------------------------------------------------
+! RELOAD (maintenance window)
+!-----------------------------------------------------------------------------
+reload
+! Answer y to confirm. Wait for the switch and all stack units to come back
+!
+!-----------------------------------------------------------------------------
+! VERIFY (after reload)
+!-----------------------------------------------------------------------------
+show stack
+show default values
+! Current spanning-tree value should be 40
+show running-config | include system-max
+show interfaces brief
+show lldp neighbors
+!
+!-----------------------------------------------------------------------------
+! lv6 ONLY: enable spanning-tree on 2600 and 2700 (after the reload)
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 2600
+ spanning-tree
+ exit
+vlan 2700
+ spanning-tree
+ exit
+end
+show span vlan 2600
+show span vlan 2700
+write memory
+!
+!-----------------------------------------------------------------------------
+! ROLLBACK
+!-----------------------------------------------------------------------------
+configure terminal
+no system-max spanning-tree 40
+! returns to the default of 32
+vlan 2600
+ no spanning-tree
+ exit
+vlan 2700
+ no spanning-tree
+ exit
+end
+write memory
+! A reload is needed for the old limit to apply again
+
+!=============================================================================
+! trinity200V-core  (10.20.8.2, 2 x ICX8200-24FX stack)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! PRE-CHECK
+!-----------------------------------------------------------------------------
+show default values
+! Note the 'spanning-tree' line: current value and the value used at next boot
+show running-config | include system-max
+show span | include VLAN
+!
+!-----------------------------------------------------------------------------
+! CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+system-max spanning-tree 40
+end
+write memory
+show default values
+! The next-boot value should now read 40
+!
+!-----------------------------------------------------------------------------
+! RELOAD (maintenance window)
+!-----------------------------------------------------------------------------
+reload
+! Answer y to confirm. Wait for the switch and all stack units to come back
+!
+!-----------------------------------------------------------------------------
+! VERIFY (after reload)
+!-----------------------------------------------------------------------------
+show stack
+show default values
+! Current spanning-tree value should be 40
+show running-config | include system-max
+show interfaces brief
+show lldp neighbors
+!
+!-----------------------------------------------------------------------------
+! ROLLBACK
+!-----------------------------------------------------------------------------
+configure terminal
+no system-max spanning-tree 40
+! returns to the default of 32
+end
+write memory
+! A reload is needed for the old limit to apply again
+
+!=============================================================================
+! END
+!=============================================================================
