@@ -19,6 +19,8 @@
 !   Access switches first, one at a time, smallest first. The core goes last,
 !   in its own window: reloading it cuts every 200V switch off until it is back.
 !   LT2-2 and LT2-3 connect through LT2-1, so they also drop while LT2-1 reloads.
+!   switch-200V-8 and Tutorial-6.03 have no remote access: run their sections
+!   over a console cable on site.
 !
 ! Switch                       Mgmt IP          VLANs  STP on  Current limit
 !   switch-200V-LT2-2          192.168.122.13      32      32  32 (default)

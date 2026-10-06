@@ -27,12 +27,12 @@
 !   - switch-200V-8, LT2-2 and LT2-3: no listed devices to move
 !
 ! Before starting
-!   - Back up the running config of each switch
+!   - Running-config backups of each switch: taken via SmartZone on 6 Oct (done)
 !   - Trinity to confirm DHCP reservations are in place on the new subnets
 !   - lv6: 2600 and 2700 run without spanning-tree until the system-max change
 !     (system-max-spanning-tree-40-ICX.txt) is done. Do that first if possible
-!   - Tutorial-6.03: no remote access at present. Its section can only be run
-!     once access is restored
+!   - Tutorial-6.03: no remote access. Its section is run over a console cable
+!     on site. Paste one block at a time: the console is slower than SSH
 !
 ! How the change works (same as the pilot)
 !   - ICX will not add a port untagged to a new VLAN while it is still untagged
