@@ -1,0 +1,2823 @@
+!=============================================================================
+! 200V VLAN migration - main cutover, all switches
+! Ruckus ICX, FastIron 10.0.10g
+! Source: 200V Device Port List.xlsx, 200V Devices tab, Status = To do
+!=============================================================================
+!
+! Scope: untagged VLAN on 340 access ports across 5 switches
+!   switch-200V-LT2-1           192.168.122.12     16 ports
+!   switch-200V-stack-lv3       192.168.122.22     84 ports
+!   switch-200V-stack-lv4       192.168.122.21     89 ports
+!   switch-200V-stack-lv6       192.168.122.11    145 ports
+!   switch-200V-Tutorial-6.03   192.168.122.15      6 ports
+!
+! VLAN mapping
+!   1230 (200V_av       ) -> 2700 (VL-av-01       )  242 ports
+!    100 (management    ) -> 2010 (VL-wifimgmt-01 )   37 ports
+!   1272 (200V_av       ) -> 2700 (VL-av-01       )   37 ports
+!   1240 (200V_staff    ) -> 2700 (VL-av-01       )   13 ports
+!   1240 (200V_staff    ) -> 2800 (VL-print-01    )    6 ports
+!   1212 (200V_IPcam    ) -> 2600 (VL-cctv-01     )    4 ports
+!   1213 (200V_building ) -> 2510 (VL-bac-01      )    1 ports
+!
+! Not in this file
+!   - 60 pilot ports moved on 5 Oct (already done)
+!   - 6 devices on the Not found tab (Review items 15-20, find on site)
+!   - Ports without a listed device (Ports without device tab, Review sections 3-4)
+!   - switch-200V-8, LT2-2 and LT2-3: no listed devices to move
+!
+! Before starting
+!   - Back up the running config of each switch
+!   - Trinity to confirm DHCP reservations are in place on the new subnets
+!   - lv6: 2600 and 2700 run without spanning-tree until the system-max change
+!     (system-max-spanning-tree-40-ICX.txt) is done. Do that first if possible
+!   - Tutorial-6.03: no remote access at present. Its section can only be run
+!     once access is restored
+!
+! How the change works (same as the pilot)
+!   - ICX will not add a port untagged to a new VLAN while it is still untagged
+!     in another, so each CHANGE block removes the old VLAN first
+!   - Only the untagged VLAN changes. Tagged VLANs on AP ports and other trunk
+!     ports are not touched
+!   - PORT BOUNCE (disable, wait 10 s, enable) makes DHCP devices request an
+!     address on the new subnet. It does not remove PoE
+!   - Ports marked '*' in the port lists had their port taken from the 200V MAC
+!     tab, not the master list (Review section 1). Confirm in the pre-check
+!
+! Order: one switch at a time, LT2-1 first (smallest), then lv3, lv4, lv6,
+! then Tutorial-6.03. Per switch: PRE-CHECK > CHANGE > PORT BOUNCE > VERIFY >
+! write memory. If a switch fails verification, run its ROLLBACK before the next.
+!=============================================================================
+
+!=============================================================================
+! switch-200V-LT2-1  (192.168.122.12)  -  16 ports
+!=============================================================================
+!
+! Port list (* = port taken from the 200V MAC tab)
+!   1/1/1     100 -> 2010  AP r650-39-49-a0
+!   1/1/4    1230 -> 2700  AV Pro convert for NDI to HDMI
+!   1/1/5    1272 -> 2700  AV Airtame
+!  *1/1/6    1230 -> 2700  AV PDU
+!  *1/1/7    1230 -> 2700  AV Recorder
+!  *1/1/8    1230 -> 2700  AV Audio DSP
+!  *1/1/10   1230 -> 2700  AV LCD 2
+!  *1/1/11   1230 -> 2700  AV LCD 1
+!  *1/1/12   1230 -> 2700  AV PTZ Camera
+!  *1/1/13   1230 -> 2700  AV Room Camera
+!  *1/1/14   1230 -> 2700  AV Occupancy Sensor
+!  *1/1/15   1230 -> 2700  AV Projector Screen 2
+!  *1/1/16   1230 -> 2700  AV Projector Screen 1
+!  *1/1/17   1230 -> 2700  AV Projector 1
+!  *1/1/18   1230 -> 2700  AV Projector 2
+!  *1/1/20   1230 -> 2700  AV Touch Panel
+!
+! Expected untagged port counts on the new VLANs after the change (this file only):
+!   VLAN 2010: +1 ports
+!   VLAN 2700: +15 ports
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+! Save the output of each command to compare after the change
+show vlan 100
+show vlan 1230
+show vlan 1272
+show vlan 2010
+show vlan 2700
+show mac-address vlan 100
+show mac-address vlan 1230
+show mac-address vlan 1272
+show interfaces brief
+! Copy the running config off the switch before changing it:
+! copy running-config tftp <server> switch-200V-LT2-1-pre-cutover.cfg
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 100
+ no untagged ethernet 1/1/1
+ exit
+vlan 1230
+ no untagged ethernet 1/1/4
+ no untagged ethernet 1/1/6 to 1/1/8
+ no untagged ethernet 1/1/10 to 1/1/18
+ no untagged ethernet 1/1/20
+ exit
+vlan 1272
+ no untagged ethernet 1/1/5
+ exit
+vlan 2010
+ untagged ethernet 1/1/1
+ exit
+vlan 2700
+ untagged ethernet 1/1/4 to 1/1/8
+ untagged ethernet 1/1/10 to 1/1/18
+ untagged ethernet 1/1/20
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 PORT BOUNCE
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/1
+ disable
+ exit
+interface ethernet 1/1/4 to 1/1/8
+ disable
+ exit
+interface ethernet 1/1/10 to 1/1/18
+ disable
+ exit
+interface ethernet 1/1/20
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/1
+ enable
+ exit
+interface ethernet 1/1/4 to 1/1/8
+ enable
+ exit
+interface ethernet 1/1/10 to 1/1/18
+ enable
+ exit
+interface ethernet 1/1/20
+ enable
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 VERIFY
+!-----------------------------------------------------------------------------
+! Pass: ports untagged in the new VLAN, tagged VLANs unchanged on AP/trunk
+! ports, and device MACs learned on the new VLANs (allow a few minutes)
+show vlan 2010
+show vlan 2700
+show mac-address vlan 2010
+show mac-address vlan 2700
+show vlan 100
+show vlan 1230
+show vlan 1272
+show interfaces brief
+! When every port passes:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 ROLLBACK (puts every port back on its old VLAN)
+!-----------------------------------------------------------------------------
+! For a single port, use only that port's lines
+configure terminal
+vlan 2010
+ no untagged ethernet 1/1/1
+ exit
+vlan 2700
+ no untagged ethernet 1/1/4 to 1/1/8
+ no untagged ethernet 1/1/10 to 1/1/18
+ no untagged ethernet 1/1/20
+ exit
+vlan 100
+ untagged ethernet 1/1/1
+ exit
+vlan 1230
+ untagged ethernet 1/1/4
+ untagged ethernet 1/1/6 to 1/1/8
+ untagged ethernet 1/1/10 to 1/1/18
+ untagged ethernet 1/1/20
+ exit
+vlan 1272
+ untagged ethernet 1/1/5
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 ROLLBACK PORT BOUNCE
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/1
+ disable
+ exit
+interface ethernet 1/1/4 to 1/1/8
+ disable
+ exit
+interface ethernet 1/1/10 to 1/1/18
+ disable
+ exit
+interface ethernet 1/1/20
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/1
+ enable
+ exit
+interface ethernet 1/1/4 to 1/1/8
+ enable
+ exit
+interface ethernet 1/1/10 to 1/1/18
+ enable
+ exit
+interface ethernet 1/1/20
+ enable
+ exit
+end
+!
+! After rollback: check ports are back on the old VLANs and MACs are learned, then:
+write memory
+
+!=============================================================================
+! switch-200V-stack-lv3  (192.168.122.22)  -  84 ports
+!=============================================================================
+!
+! Port list (* = port taken from the 200V MAC tab)
+!   1/1/1     100 -> 2010  AP r650-19-9d-00
+!   1/1/2     100 -> 2010  AP r650-19-9d-70
+!   1/1/3     100 -> 2010  AP r650-19-9d-50
+!   1/1/4     100 -> 2010  AP r650-19-9d-40
+!   1/1/5     100 -> 2010  AP r650-19-9d-80
+!   1/1/7     100 -> 2010  AP r650-32-68-f0
+!   1/1/8     100 -> 2010  AP r650-32-61-e0
+!   1/1/9     100 -> 2010  AP r650-3d-98-50
+!   1/1/10    100 -> 2010  AP r650-19-9d-a0
+!   1/1/11    100 -> 2010  AP r650-19-9d-60
+!   1/1/13   1230 -> 2700  AV Touch Panel
+!   1/1/14   1230 -> 2700  AV Room Camera
+!   1/1/15   1230 -> 2700  AV Occupancy Sensor
+!   1/1/16   1230 -> 2700  AV Touch Panel
+!   1/1/17   1230 -> 2700  AV Room Camera
+!   1/1/18   1230 -> 2700  AV Occupancy Sensor
+!   1/1/19   1230 -> 2700  AV Touch Panel
+!   1/1/20   1230 -> 2700  AV Room Camera
+!   1/1/21   1230 -> 2700  AV Occupancy Sensor
+!   1/1/22   1230 -> 2700  AV Touch Panel
+!   1/1/23   1230 -> 2700  AV Touch Panel
+!   1/1/24   1230 -> 2700  AV Occupancy Sensor
+!   1/1/25   1230 -> 2700  AV Room Camera
+!   1/1/26   1230 -> 2700  AV Room Camera
+!   1/1/27   1230 -> 2700  AV Occupancy Sensor
+!   1/1/28   1230 -> 2700  AV Touch Panel
+!   1/1/29   1230 -> 2700  AV Touch Panel
+!   1/1/30   1230 -> 2700  AV Occupancy Sensor
+!   1/1/31   1230 -> 2700  AV Room Camera
+!   1/1/32   1230 -> 2700  AV Room Camera
+!   1/1/33   1230 -> 2700  AV Occupancy Sensor
+!   1/1/35   1230 -> 2700  AV Keypad for Room-In-Use light
+!   1/1/36   1230 -> 2700  AV Keypad for Room-In-Use light
+!   2/1/13   1230 -> 2700  AV Projector
+!   2/1/15   1230 -> 2700  AV Touch Panel
+!   2/1/18   1272 -> 2700  AV Airtame
+!   2/1/19   1230 -> 2700  AV PDU
+!   2/1/20   1230 -> 2700  AV AV Switcher
+!   2/1/21   1230 -> 2700  AV Room Camera
+!   2/1/22   1230 -> 2700  AV Occupancy Sensor
+!   2/1/23   1230 -> 2700  AV Projector
+!   2/1/25   1230 -> 2700  AV PDU
+!   2/1/26   1230 -> 2700  AV Touch Panel
+!   2/1/28   1272 -> 2700  AV AV Switcher
+!   2/1/30   1272 -> 2700  AV Airtame
+!   2/1/31   1230 -> 2700  AV LCD
+!   2/1/32   1230 -> 2700  AV Keypad for Room-In-Use light
+!   2/1/33   1272 -> 2700  AV Airtame
+!   2/1/35   1230 -> 2700  AV PTZ Camera
+!   2/1/36   1230 -> 2700  AV Mic Charger
+!   2/1/37   1230 -> 2700  AV Recorder
+!   2/1/38   1230 -> 2700  AV Pro convert for NDI to HDMI
+!   2/1/39   1230 -> 2700  AV Keypad for Room-In-Use light
+!   2/1/40   1230 -> 2700  AV Cresnet Bridge For Outside Sign
+!   4/1/4    1240 -> 2800  printer 200v-lvl3-staffroom
+!   4/1/40   1230 -> 2700  AV AV Switcher
+!   4/1/42   1230 -> 2700  AV PDU
+!   4/1/44   1230 -> 2700  AV Projector
+!   4/1/47   1272 -> 2700  AV Airtame
+!   4/1/48   1230 -> 2700  AV PDU
+!   5/1/1    1230 -> 2700  AV LCD
+!   5/1/2    1230 -> 2700  AV UC Engine
+!   5/1/3    1272 -> 2700  AV Airtame
+!   5/1/8    1230 -> 2700  AV Display
+!   5/1/9    1272 -> 2700  AV Airtame
+!   5/1/10   1230 -> 2700  AV AV Switcher
+!   5/1/12   1230 -> 2700  AV Projector
+!   5/1/14   1230 -> 2700  AV Projector
+!   5/1/16   1230 -> 2700  AV PDU
+!   5/1/17   1272 -> 2700  AV Airtame
+!   5/1/19   1230 -> 2700  AV Projector
+!   5/1/21   1272 -> 2700  AV Airtame
+!   5/1/22   1230 -> 2700  AV PDU
+!   5/1/25   1230 -> 2700  AV AV Switcher
+!   5/1/27   1272 -> 2700  AV Airtame
+!   5/1/28   1230 -> 2700  AV PDU
+!   5/1/30   1230 -> 2700  AV AV Switcher
+!   5/1/31   1230 -> 2700  AV Projector
+!   5/1/33   1230 -> 2700  AV Display
+!   5/1/41   1230 -> 2700  AV AV Switcher
+!   5/1/42   1230 -> 2700  AV Projector
+!   5/1/44   1230 -> 2700  AV PDU
+!   5/1/46   1272 -> 2700  AV Airtame
+!   5/1/48   1230 -> 2700  AV AV Switcher
+!
+! Expected untagged port counts on the new VLANs after the change (this file only):
+!   VLAN 2010: +10 ports
+!   VLAN 2700: +73 ports
+!   VLAN 2800: +1 ports
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+! Save the output of each command to compare after the change
+show stack
+show vlan 100
+show vlan 1230
+show vlan 1240
+show vlan 1272
+show vlan 2010
+show vlan 2700
+show vlan 2800
+show mac-address vlan 100
+show mac-address vlan 1230
+show mac-address vlan 1240
+show mac-address vlan 1272
+show interfaces brief
+! Copy the running config off the switch before changing it:
+! copy running-config tftp <server> switch-200V-stack-lv3-pre-cutover.cfg
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 100
+ no untagged ethernet 1/1/1 to 1/1/5
+ no untagged ethernet 1/1/7 to 1/1/11
+ exit
+vlan 1230
+ no untagged ethernet 1/1/13 to 1/1/33
+ no untagged ethernet 1/1/35 to 1/1/36
+ no untagged ethernet 2/1/13
+ no untagged ethernet 2/1/15
+ no untagged ethernet 2/1/19 to 2/1/23
+ no untagged ethernet 2/1/25 to 2/1/26
+ no untagged ethernet 2/1/31 to 2/1/32
+ no untagged ethernet 2/1/35 to 2/1/40
+ no untagged ethernet 4/1/40
+ no untagged ethernet 4/1/42
+ no untagged ethernet 4/1/44
+ no untagged ethernet 4/1/48
+ no untagged ethernet 5/1/1 to 5/1/2
+ no untagged ethernet 5/1/8
+ no untagged ethernet 5/1/10
+ no untagged ethernet 5/1/12
+ no untagged ethernet 5/1/14
+ no untagged ethernet 5/1/16
+ no untagged ethernet 5/1/19
+ no untagged ethernet 5/1/22
+ no untagged ethernet 5/1/25
+ no untagged ethernet 5/1/28
+ no untagged ethernet 5/1/30 to 5/1/31
+ no untagged ethernet 5/1/33
+ no untagged ethernet 5/1/41 to 5/1/42
+ no untagged ethernet 5/1/44
+ no untagged ethernet 5/1/48
+ exit
+vlan 1240
+ no untagged ethernet 4/1/4
+ exit
+vlan 1272
+ no untagged ethernet 2/1/18
+ no untagged ethernet 2/1/28
+ no untagged ethernet 2/1/30
+ no untagged ethernet 2/1/33
+ no untagged ethernet 4/1/47
+ no untagged ethernet 5/1/3
+ no untagged ethernet 5/1/9
+ no untagged ethernet 5/1/17
+ no untagged ethernet 5/1/21
+ no untagged ethernet 5/1/27
+ no untagged ethernet 5/1/46
+ exit
+vlan 2010
+ untagged ethernet 1/1/1 to 1/1/5
+ untagged ethernet 1/1/7 to 1/1/11
+ exit
+vlan 2700
+ untagged ethernet 1/1/13 to 1/1/33
+ untagged ethernet 1/1/35 to 1/1/36
+ untagged ethernet 2/1/13
+ untagged ethernet 2/1/15
+ untagged ethernet 2/1/18 to 2/1/23
+ untagged ethernet 2/1/25 to 2/1/26
+ untagged ethernet 2/1/28
+ untagged ethernet 2/1/30 to 2/1/33
+ untagged ethernet 2/1/35 to 2/1/40
+ untagged ethernet 4/1/40
+ untagged ethernet 4/1/42
+ untagged ethernet 4/1/44
+ untagged ethernet 4/1/47 to 4/1/48
+ untagged ethernet 5/1/1 to 5/1/3
+ untagged ethernet 5/1/8 to 5/1/10
+ untagged ethernet 5/1/12
+ untagged ethernet 5/1/14
+ untagged ethernet 5/1/16 to 5/1/17
+ untagged ethernet 5/1/19
+ untagged ethernet 5/1/21 to 5/1/22
+ untagged ethernet 5/1/25
+ untagged ethernet 5/1/27 to 5/1/28
+ untagged ethernet 5/1/30 to 5/1/31
+ untagged ethernet 5/1/33
+ untagged ethernet 5/1/41 to 5/1/42
+ untagged ethernet 5/1/44
+ untagged ethernet 5/1/46
+ untagged ethernet 5/1/48
+ exit
+vlan 2800
+ untagged ethernet 4/1/4
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 PORT BOUNCE
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/1 to 1/1/5
+ disable
+ exit
+interface ethernet 1/1/7 to 1/1/11
+ disable
+ exit
+interface ethernet 1/1/13 to 1/1/33
+ disable
+ exit
+interface ethernet 1/1/35 to 1/1/36
+ disable
+ exit
+interface ethernet 2/1/13
+ disable
+ exit
+interface ethernet 2/1/15
+ disable
+ exit
+interface ethernet 2/1/18 to 2/1/23
+ disable
+ exit
+interface ethernet 2/1/25 to 2/1/26
+ disable
+ exit
+interface ethernet 2/1/28
+ disable
+ exit
+interface ethernet 2/1/30 to 2/1/33
+ disable
+ exit
+interface ethernet 2/1/35 to 2/1/40
+ disable
+ exit
+interface ethernet 4/1/4
+ disable
+ exit
+interface ethernet 4/1/40
+ disable
+ exit
+interface ethernet 4/1/42
+ disable
+ exit
+interface ethernet 4/1/44
+ disable
+ exit
+interface ethernet 4/1/47 to 4/1/48
+ disable
+ exit
+interface ethernet 5/1/1 to 5/1/3
+ disable
+ exit
+interface ethernet 5/1/8 to 5/1/10
+ disable
+ exit
+interface ethernet 5/1/12
+ disable
+ exit
+interface ethernet 5/1/14
+ disable
+ exit
+interface ethernet 5/1/16 to 5/1/17
+ disable
+ exit
+interface ethernet 5/1/19
+ disable
+ exit
+interface ethernet 5/1/21 to 5/1/22
+ disable
+ exit
+interface ethernet 5/1/25
+ disable
+ exit
+interface ethernet 5/1/27 to 5/1/28
+ disable
+ exit
+interface ethernet 5/1/30 to 5/1/31
+ disable
+ exit
+interface ethernet 5/1/33
+ disable
+ exit
+interface ethernet 5/1/41 to 5/1/42
+ disable
+ exit
+interface ethernet 5/1/44
+ disable
+ exit
+interface ethernet 5/1/46
+ disable
+ exit
+interface ethernet 5/1/48
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/1 to 1/1/5
+ enable
+ exit
+interface ethernet 1/1/7 to 1/1/11
+ enable
+ exit
+interface ethernet 1/1/13 to 1/1/33
+ enable
+ exit
+interface ethernet 1/1/35 to 1/1/36
+ enable
+ exit
+interface ethernet 2/1/13
+ enable
+ exit
+interface ethernet 2/1/15
+ enable
+ exit
+interface ethernet 2/1/18 to 2/1/23
+ enable
+ exit
+interface ethernet 2/1/25 to 2/1/26
+ enable
+ exit
+interface ethernet 2/1/28
+ enable
+ exit
+interface ethernet 2/1/30 to 2/1/33
+ enable
+ exit
+interface ethernet 2/1/35 to 2/1/40
+ enable
+ exit
+interface ethernet 4/1/4
+ enable
+ exit
+interface ethernet 4/1/40
+ enable
+ exit
+interface ethernet 4/1/42
+ enable
+ exit
+interface ethernet 4/1/44
+ enable
+ exit
+interface ethernet 4/1/47 to 4/1/48
+ enable
+ exit
+interface ethernet 5/1/1 to 5/1/3
+ enable
+ exit
+interface ethernet 5/1/8 to 5/1/10
+ enable
+ exit
+interface ethernet 5/1/12
+ enable
+ exit
+interface ethernet 5/1/14
+ enable
+ exit
+interface ethernet 5/1/16 to 5/1/17
+ enable
+ exit
+interface ethernet 5/1/19
+ enable
+ exit
+interface ethernet 5/1/21 to 5/1/22
+ enable
+ exit
+interface ethernet 5/1/25
+ enable
+ exit
+interface ethernet 5/1/27 to 5/1/28
+ enable
+ exit
+interface ethernet 5/1/30 to 5/1/31
+ enable
+ exit
+interface ethernet 5/1/33
+ enable
+ exit
+interface ethernet 5/1/41 to 5/1/42
+ enable
+ exit
+interface ethernet 5/1/44
+ enable
+ exit
+interface ethernet 5/1/46
+ enable
+ exit
+interface ethernet 5/1/48
+ enable
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 VERIFY
+!-----------------------------------------------------------------------------
+! Pass: ports untagged in the new VLAN, tagged VLANs unchanged on AP/trunk
+! ports, and device MACs learned on the new VLANs (allow a few minutes)
+show vlan 2010
+show vlan 2700
+show vlan 2800
+show mac-address vlan 2010
+show mac-address vlan 2700
+show mac-address vlan 2800
+show vlan 100
+show vlan 1230
+show vlan 1240
+show vlan 1272
+show interfaces brief
+! When every port passes:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 ROLLBACK (puts every port back on its old VLAN)
+!-----------------------------------------------------------------------------
+! For a single port, use only that port's lines
+configure terminal
+vlan 2010
+ no untagged ethernet 1/1/1 to 1/1/5
+ no untagged ethernet 1/1/7 to 1/1/11
+ exit
+vlan 2700
+ no untagged ethernet 1/1/13 to 1/1/33
+ no untagged ethernet 1/1/35 to 1/1/36
+ no untagged ethernet 2/1/13
+ no untagged ethernet 2/1/15
+ no untagged ethernet 2/1/18 to 2/1/23
+ no untagged ethernet 2/1/25 to 2/1/26
+ no untagged ethernet 2/1/28
+ no untagged ethernet 2/1/30 to 2/1/33
+ no untagged ethernet 2/1/35 to 2/1/40
+ no untagged ethernet 4/1/40
+ no untagged ethernet 4/1/42
+ no untagged ethernet 4/1/44
+ no untagged ethernet 4/1/47 to 4/1/48
+ no untagged ethernet 5/1/1 to 5/1/3
+ no untagged ethernet 5/1/8 to 5/1/10
+ no untagged ethernet 5/1/12
+ no untagged ethernet 5/1/14
+ no untagged ethernet 5/1/16 to 5/1/17
+ no untagged ethernet 5/1/19
+ no untagged ethernet 5/1/21 to 5/1/22
+ no untagged ethernet 5/1/25
+ no untagged ethernet 5/1/27 to 5/1/28
+ no untagged ethernet 5/1/30 to 5/1/31
+ no untagged ethernet 5/1/33
+ no untagged ethernet 5/1/41 to 5/1/42
+ no untagged ethernet 5/1/44
+ no untagged ethernet 5/1/46
+ no untagged ethernet 5/1/48
+ exit
+vlan 2800
+ no untagged ethernet 4/1/4
+ exit
+vlan 100
+ untagged ethernet 1/1/1 to 1/1/5
+ untagged ethernet 1/1/7 to 1/1/11
+ exit
+vlan 1230
+ untagged ethernet 1/1/13 to 1/1/33
+ untagged ethernet 1/1/35 to 1/1/36
+ untagged ethernet 2/1/13
+ untagged ethernet 2/1/15
+ untagged ethernet 2/1/19 to 2/1/23
+ untagged ethernet 2/1/25 to 2/1/26
+ untagged ethernet 2/1/31 to 2/1/32
+ untagged ethernet 2/1/35 to 2/1/40
+ untagged ethernet 4/1/40
+ untagged ethernet 4/1/42
+ untagged ethernet 4/1/44
+ untagged ethernet 4/1/48
+ untagged ethernet 5/1/1 to 5/1/2
+ untagged ethernet 5/1/8
+ untagged ethernet 5/1/10
+ untagged ethernet 5/1/12
+ untagged ethernet 5/1/14
+ untagged ethernet 5/1/16
+ untagged ethernet 5/1/19
+ untagged ethernet 5/1/22
+ untagged ethernet 5/1/25
+ untagged ethernet 5/1/28
+ untagged ethernet 5/1/30 to 5/1/31
+ untagged ethernet 5/1/33
+ untagged ethernet 5/1/41 to 5/1/42
+ untagged ethernet 5/1/44
+ untagged ethernet 5/1/48
+ exit
+vlan 1240
+ untagged ethernet 4/1/4
+ exit
+vlan 1272
+ untagged ethernet 2/1/18
+ untagged ethernet 2/1/28
+ untagged ethernet 2/1/30
+ untagged ethernet 2/1/33
+ untagged ethernet 4/1/47
+ untagged ethernet 5/1/3
+ untagged ethernet 5/1/9
+ untagged ethernet 5/1/17
+ untagged ethernet 5/1/21
+ untagged ethernet 5/1/27
+ untagged ethernet 5/1/46
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 ROLLBACK PORT BOUNCE
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/1 to 1/1/5
+ disable
+ exit
+interface ethernet 1/1/7 to 1/1/11
+ disable
+ exit
+interface ethernet 1/1/13 to 1/1/33
+ disable
+ exit
+interface ethernet 1/1/35 to 1/1/36
+ disable
+ exit
+interface ethernet 2/1/13
+ disable
+ exit
+interface ethernet 2/1/15
+ disable
+ exit
+interface ethernet 2/1/18 to 2/1/23
+ disable
+ exit
+interface ethernet 2/1/25 to 2/1/26
+ disable
+ exit
+interface ethernet 2/1/28
+ disable
+ exit
+interface ethernet 2/1/30 to 2/1/33
+ disable
+ exit
+interface ethernet 2/1/35 to 2/1/40
+ disable
+ exit
+interface ethernet 4/1/4
+ disable
+ exit
+interface ethernet 4/1/40
+ disable
+ exit
+interface ethernet 4/1/42
+ disable
+ exit
+interface ethernet 4/1/44
+ disable
+ exit
+interface ethernet 4/1/47 to 4/1/48
+ disable
+ exit
+interface ethernet 5/1/1 to 5/1/3
+ disable
+ exit
+interface ethernet 5/1/8 to 5/1/10
+ disable
+ exit
+interface ethernet 5/1/12
+ disable
+ exit
+interface ethernet 5/1/14
+ disable
+ exit
+interface ethernet 5/1/16 to 5/1/17
+ disable
+ exit
+interface ethernet 5/1/19
+ disable
+ exit
+interface ethernet 5/1/21 to 5/1/22
+ disable
+ exit
+interface ethernet 5/1/25
+ disable
+ exit
+interface ethernet 5/1/27 to 5/1/28
+ disable
+ exit
+interface ethernet 5/1/30 to 5/1/31
+ disable
+ exit
+interface ethernet 5/1/33
+ disable
+ exit
+interface ethernet 5/1/41 to 5/1/42
+ disable
+ exit
+interface ethernet 5/1/44
+ disable
+ exit
+interface ethernet 5/1/46
+ disable
+ exit
+interface ethernet 5/1/48
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/1 to 1/1/5
+ enable
+ exit
+interface ethernet 1/1/7 to 1/1/11
+ enable
+ exit
+interface ethernet 1/1/13 to 1/1/33
+ enable
+ exit
+interface ethernet 1/1/35 to 1/1/36
+ enable
+ exit
+interface ethernet 2/1/13
+ enable
+ exit
+interface ethernet 2/1/15
+ enable
+ exit
+interface ethernet 2/1/18 to 2/1/23
+ enable
+ exit
+interface ethernet 2/1/25 to 2/1/26
+ enable
+ exit
+interface ethernet 2/1/28
+ enable
+ exit
+interface ethernet 2/1/30 to 2/1/33
+ enable
+ exit
+interface ethernet 2/1/35 to 2/1/40
+ enable
+ exit
+interface ethernet 4/1/4
+ enable
+ exit
+interface ethernet 4/1/40
+ enable
+ exit
+interface ethernet 4/1/42
+ enable
+ exit
+interface ethernet 4/1/44
+ enable
+ exit
+interface ethernet 4/1/47 to 4/1/48
+ enable
+ exit
+interface ethernet 5/1/1 to 5/1/3
+ enable
+ exit
+interface ethernet 5/1/8 to 5/1/10
+ enable
+ exit
+interface ethernet 5/1/12
+ enable
+ exit
+interface ethernet 5/1/14
+ enable
+ exit
+interface ethernet 5/1/16 to 5/1/17
+ enable
+ exit
+interface ethernet 5/1/19
+ enable
+ exit
+interface ethernet 5/1/21 to 5/1/22
+ enable
+ exit
+interface ethernet 5/1/25
+ enable
+ exit
+interface ethernet 5/1/27 to 5/1/28
+ enable
+ exit
+interface ethernet 5/1/30 to 5/1/31
+ enable
+ exit
+interface ethernet 5/1/33
+ enable
+ exit
+interface ethernet 5/1/41 to 5/1/42
+ enable
+ exit
+interface ethernet 5/1/44
+ enable
+ exit
+interface ethernet 5/1/46
+ enable
+ exit
+interface ethernet 5/1/48
+ enable
+ exit
+end
+!
+! After rollback: check ports are back on the old VLANs and MACs are learned, then:
+write memory
+
+!=============================================================================
+! switch-200V-stack-lv4  (192.168.122.21)  -  89 ports
+!=============================================================================
+!
+! Port list (* = port taken from the 200V MAC tab)
+!   1/1/1     100 -> 2010  AP r650-3d-bf-30
+!   1/1/2     100 -> 2010  AP r650-19-9c-c0
+!   1/1/3     100 -> 2010  AP r650-19-9c-a0
+!   1/1/4     100 -> 2010  AP r650-3d-4c-80
+!   1/1/5     100 -> 2010  AP r650-19-9c-90
+!   1/1/6     100 -> 2010  AP r650-19-9c-80
+!   1/1/7     100 -> 2010  AP r650-19-9b-90
+!   1/1/9     100 -> 2010  AP r650-19-9c-70
+!   1/1/10    100 -> 2010  AP r650-3d-be-c0
+!   1/1/11    100 -> 2010  AP r650-32-66-a0
+!   1/1/12   1240 -> 2800  printer 200v-lvl4-staffroom
+!   1/1/13   1230 -> 2700  AV PDU
+!   1/1/16   1230 -> 2700  AV Touch Panel
+!   1/1/18   1230 -> 2700  AV Projector
+!   1/1/19   1230 -> 2700  AV Occupancy Sensor
+!   1/1/20   1272 -> 2700  AV Airtame
+!   1/1/22   1230 -> 2700  AV Projector
+!   1/1/23   1230 -> 2700  AV Touch Panel
+!   1/1/24   1272 -> 2700  AV Airtame
+!   1/1/25   1230 -> 2700  AV PDU
+!   1/1/26   1230 -> 2700  AV Room Camera
+!   1/1/27   1230 -> 2700  AV AV Switcher
+!   1/1/29   1272 -> 2700  AV Airtame
+!   1/1/31   1230 -> 2700  AV Projector
+!   1/1/33   1230 -> 2700  AV Touch Panel
+!   1/1/35   1230 -> 2700  AV Room Camera
+!   1/1/36   1230 -> 2700  AV Projector Screen Right
+!   1/1/37   1230 -> 2700  AV Pro Convert for NDI to HDMI
+!   1/1/39   1230 -> 2700  AV Touch Panel
+!   1/1/40   1230 -> 2700  AV Touch Panel
+!   1/1/41   1230 -> 2700  AV Touch Panel
+!   1/1/43   1230 -> 2700  AV Pro convert for NDI to HDMI
+!   1/1/44   1230 -> 2700  AV PTZ Camera
+!   2/1/13   1230 -> 2700  AV Wireless Mic Receiver
+!   2/1/14   1272 -> 2700  AV Airtame
+!   2/1/16   1230 -> 2700  AV Touch Panel
+!   2/1/17   1230 -> 2700  AV PDU
+!   2/1/19   1230 -> 2700  AV Occupancy Sensor
+!   2/1/22   1272 -> 2700  AV Airtame
+!   2/1/23   1230 -> 2700  AV Occupancy Sensor
+!   2/1/24   1272 -> 2700  AV Airtame
+!   2/1/25   1230 -> 2700  AV Touch Panel
+!   2/1/26   1230 -> 2700  AV Occupancy Sensor
+!   2/1/27   1230 -> 2700  AV Cresnet Bridge For Outside Sign
+!   2/1/28   1230 -> 2700  AV AV Switcher
+!   2/1/30   1230 -> 2700  AV Audio DSP
+!   2/1/33   1230 -> 2700  AV Room Camera
+!   2/1/34   1230 -> 2700  AV Occupancy Sensor
+!   2/1/35   1230 -> 2700  AV Room Camera
+!   2/1/36   1230 -> 2700  AV Occupancy Sensor
+!   2/1/37   1230 -> 2700  AV Room Camera
+!   2/1/40   1230 -> 2700  AV Occupancy Sensor
+!   2/1/41   1230 -> 2700  AV Room Camera
+!   2/1/42   1230 -> 2700  AV Room Camera
+!   2/1/43   1230 -> 2700  AV Room Camera
+!   2/1/44   1230 -> 2700  AV Occupancy Sensor
+!   2/1/45   1230 -> 2700  AV Room Camera
+!   2/1/46   1230 -> 2700  AV Touch Panel
+!   2/1/47   1230 -> 2700  AV AV Switcher
+!   2/1/48   1230 -> 2700  AV Occupancy Sensor
+!   4/1/3    1230 -> 2700  AV Mic Charger
+!   4/1/5    1230 -> 2700  AV PDU 1
+!   4/1/8    1230 -> 2700  AV LCD Left
+!   4/1/9    1230 -> 2700  AV PTZ Camera
+!   4/1/18   1230 -> 2700  AV Projector
+!   4/1/22   1230 -> 2700  AV Projector
+!   4/1/24   1230 -> 2700  AV PDU
+!   4/1/25   1230 -> 2700  AV AV Switcher
+!   4/1/37   1230 -> 2700  AV LCD Right
+!   4/1/41   1230 -> 2700  AV Projector Screen Left
+!   4/1/42   1230 -> 2700  AV Recorder
+!   4/1/43   1230 -> 2700  AV PDU 2
+!   5/1/4    1230 -> 2700  AV Projector
+!   5/1/8    1230 -> 2700  AV PDU
+!   5/1/9    1272 -> 2700  AV Airtame
+!   5/1/10   1230 -> 2700  AV AV Switcher
+!   5/1/13   1230 -> 2700  AV PDU
+!   5/1/15   1230 -> 2700  AV AV Switcher
+!   5/1/20   1230 -> 2700  AV AV Switcher
+!   5/1/23   1230 -> 2700  AV PDU
+!   5/1/25   1230 -> 2700  AV Projector
+!   5/1/31   1230 -> 2700  AV PDU
+!   5/1/32   1272 -> 2700  AV Airtame
+!   5/1/34   1230 -> 2700  AV AV Switcher
+!   5/1/36   1230 -> 2700  AV Display
+!   5/1/37   1230 -> 2700  AV Projector Right
+!   5/1/39   1230 -> 2700  AV Projector Left
+!   5/1/41   1230 -> 2700  AV Recorder
+!   5/1/42   1230 -> 2700  AV Mic Charger
+!
+! Expected untagged port counts on the new VLANs after the change (this file only):
+!   VLAN 2010: +10 ports
+!   VLAN 2700: +78 ports
+!   VLAN 2800: +1 ports
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+! Save the output of each command to compare after the change
+show stack
+show vlan 100
+show vlan 1230
+show vlan 1240
+show vlan 1272
+show vlan 2010
+show vlan 2700
+show vlan 2800
+show mac-address vlan 100
+show mac-address vlan 1230
+show mac-address vlan 1240
+show mac-address vlan 1272
+show interfaces brief
+! Copy the running config off the switch before changing it:
+! copy running-config tftp <server> switch-200V-stack-lv4-pre-cutover.cfg
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 100
+ no untagged ethernet 1/1/1 to 1/1/7
+ no untagged ethernet 1/1/9 to 1/1/11
+ exit
+vlan 1230
+ no untagged ethernet 1/1/13
+ no untagged ethernet 1/1/16
+ no untagged ethernet 1/1/18 to 1/1/19
+ no untagged ethernet 1/1/22 to 1/1/23
+ no untagged ethernet 1/1/25 to 1/1/27
+ no untagged ethernet 1/1/31
+ no untagged ethernet 1/1/33
+ no untagged ethernet 1/1/35 to 1/1/37
+ no untagged ethernet 1/1/39 to 1/1/41
+ no untagged ethernet 1/1/43 to 1/1/44
+ no untagged ethernet 2/1/13
+ no untagged ethernet 2/1/16 to 2/1/17
+ no untagged ethernet 2/1/19
+ no untagged ethernet 2/1/23
+ no untagged ethernet 2/1/25 to 2/1/28
+ no untagged ethernet 2/1/30
+ no untagged ethernet 2/1/33 to 2/1/37
+ no untagged ethernet 2/1/40 to 2/1/48
+ no untagged ethernet 4/1/3
+ no untagged ethernet 4/1/5
+ no untagged ethernet 4/1/8 to 4/1/9
+ no untagged ethernet 4/1/18
+ no untagged ethernet 4/1/22
+ no untagged ethernet 4/1/24 to 4/1/25
+ no untagged ethernet 4/1/37
+ no untagged ethernet 4/1/41 to 4/1/43
+ no untagged ethernet 5/1/4
+ no untagged ethernet 5/1/8
+ no untagged ethernet 5/1/10
+ no untagged ethernet 5/1/13
+ no untagged ethernet 5/1/15
+ no untagged ethernet 5/1/20
+ no untagged ethernet 5/1/23
+ no untagged ethernet 5/1/25
+ no untagged ethernet 5/1/31
+ no untagged ethernet 5/1/34
+ no untagged ethernet 5/1/36 to 5/1/37
+ no untagged ethernet 5/1/39
+ no untagged ethernet 5/1/41 to 5/1/42
+ exit
+vlan 1240
+ no untagged ethernet 1/1/12
+ exit
+vlan 1272
+ no untagged ethernet 1/1/20
+ no untagged ethernet 1/1/24
+ no untagged ethernet 1/1/29
+ no untagged ethernet 2/1/14
+ no untagged ethernet 2/1/22
+ no untagged ethernet 2/1/24
+ no untagged ethernet 5/1/9
+ no untagged ethernet 5/1/32
+ exit
+vlan 2010
+ untagged ethernet 1/1/1 to 1/1/7
+ untagged ethernet 1/1/9 to 1/1/11
+ exit
+vlan 2700
+ untagged ethernet 1/1/13
+ untagged ethernet 1/1/16
+ untagged ethernet 1/1/18 to 1/1/20
+ untagged ethernet 1/1/22 to 1/1/27
+ untagged ethernet 1/1/29
+ untagged ethernet 1/1/31
+ untagged ethernet 1/1/33
+ untagged ethernet 1/1/35 to 1/1/37
+ untagged ethernet 1/1/39 to 1/1/41
+ untagged ethernet 1/1/43 to 1/1/44
+ untagged ethernet 2/1/13 to 2/1/14
+ untagged ethernet 2/1/16 to 2/1/17
+ untagged ethernet 2/1/19
+ untagged ethernet 2/1/22 to 2/1/28
+ untagged ethernet 2/1/30
+ untagged ethernet 2/1/33 to 2/1/37
+ untagged ethernet 2/1/40 to 2/1/48
+ untagged ethernet 4/1/3
+ untagged ethernet 4/1/5
+ untagged ethernet 4/1/8 to 4/1/9
+ untagged ethernet 4/1/18
+ untagged ethernet 4/1/22
+ untagged ethernet 4/1/24 to 4/1/25
+ untagged ethernet 4/1/37
+ untagged ethernet 4/1/41 to 4/1/43
+ untagged ethernet 5/1/4
+ untagged ethernet 5/1/8 to 5/1/10
+ untagged ethernet 5/1/13
+ untagged ethernet 5/1/15
+ untagged ethernet 5/1/20
+ untagged ethernet 5/1/23
+ untagged ethernet 5/1/25
+ untagged ethernet 5/1/31 to 5/1/32
+ untagged ethernet 5/1/34
+ untagged ethernet 5/1/36 to 5/1/37
+ untagged ethernet 5/1/39
+ untagged ethernet 5/1/41 to 5/1/42
+ exit
+vlan 2800
+ untagged ethernet 1/1/12
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 PORT BOUNCE
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/1 to 1/1/7
+ disable
+ exit
+interface ethernet 1/1/9 to 1/1/13
+ disable
+ exit
+interface ethernet 1/1/16
+ disable
+ exit
+interface ethernet 1/1/18 to 1/1/20
+ disable
+ exit
+interface ethernet 1/1/22 to 1/1/27
+ disable
+ exit
+interface ethernet 1/1/29
+ disable
+ exit
+interface ethernet 1/1/31
+ disable
+ exit
+interface ethernet 1/1/33
+ disable
+ exit
+interface ethernet 1/1/35 to 1/1/37
+ disable
+ exit
+interface ethernet 1/1/39 to 1/1/41
+ disable
+ exit
+interface ethernet 1/1/43 to 1/1/44
+ disable
+ exit
+interface ethernet 2/1/13 to 2/1/14
+ disable
+ exit
+interface ethernet 2/1/16 to 2/1/17
+ disable
+ exit
+interface ethernet 2/1/19
+ disable
+ exit
+interface ethernet 2/1/22 to 2/1/28
+ disable
+ exit
+interface ethernet 2/1/30
+ disable
+ exit
+interface ethernet 2/1/33 to 2/1/37
+ disable
+ exit
+interface ethernet 2/1/40 to 2/1/48
+ disable
+ exit
+interface ethernet 4/1/3
+ disable
+ exit
+interface ethernet 4/1/5
+ disable
+ exit
+interface ethernet 4/1/8 to 4/1/9
+ disable
+ exit
+interface ethernet 4/1/18
+ disable
+ exit
+interface ethernet 4/1/22
+ disable
+ exit
+interface ethernet 4/1/24 to 4/1/25
+ disable
+ exit
+interface ethernet 4/1/37
+ disable
+ exit
+interface ethernet 4/1/41 to 4/1/43
+ disable
+ exit
+interface ethernet 5/1/4
+ disable
+ exit
+interface ethernet 5/1/8 to 5/1/10
+ disable
+ exit
+interface ethernet 5/1/13
+ disable
+ exit
+interface ethernet 5/1/15
+ disable
+ exit
+interface ethernet 5/1/20
+ disable
+ exit
+interface ethernet 5/1/23
+ disable
+ exit
+interface ethernet 5/1/25
+ disable
+ exit
+interface ethernet 5/1/31 to 5/1/32
+ disable
+ exit
+interface ethernet 5/1/34
+ disable
+ exit
+interface ethernet 5/1/36 to 5/1/37
+ disable
+ exit
+interface ethernet 5/1/39
+ disable
+ exit
+interface ethernet 5/1/41 to 5/1/42
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/1 to 1/1/7
+ enable
+ exit
+interface ethernet 1/1/9 to 1/1/13
+ enable
+ exit
+interface ethernet 1/1/16
+ enable
+ exit
+interface ethernet 1/1/18 to 1/1/20
+ enable
+ exit
+interface ethernet 1/1/22 to 1/1/27
+ enable
+ exit
+interface ethernet 1/1/29
+ enable
+ exit
+interface ethernet 1/1/31
+ enable
+ exit
+interface ethernet 1/1/33
+ enable
+ exit
+interface ethernet 1/1/35 to 1/1/37
+ enable
+ exit
+interface ethernet 1/1/39 to 1/1/41
+ enable
+ exit
+interface ethernet 1/1/43 to 1/1/44
+ enable
+ exit
+interface ethernet 2/1/13 to 2/1/14
+ enable
+ exit
+interface ethernet 2/1/16 to 2/1/17
+ enable
+ exit
+interface ethernet 2/1/19
+ enable
+ exit
+interface ethernet 2/1/22 to 2/1/28
+ enable
+ exit
+interface ethernet 2/1/30
+ enable
+ exit
+interface ethernet 2/1/33 to 2/1/37
+ enable
+ exit
+interface ethernet 2/1/40 to 2/1/48
+ enable
+ exit
+interface ethernet 4/1/3
+ enable
+ exit
+interface ethernet 4/1/5
+ enable
+ exit
+interface ethernet 4/1/8 to 4/1/9
+ enable
+ exit
+interface ethernet 4/1/18
+ enable
+ exit
+interface ethernet 4/1/22
+ enable
+ exit
+interface ethernet 4/1/24 to 4/1/25
+ enable
+ exit
+interface ethernet 4/1/37
+ enable
+ exit
+interface ethernet 4/1/41 to 4/1/43
+ enable
+ exit
+interface ethernet 5/1/4
+ enable
+ exit
+interface ethernet 5/1/8 to 5/1/10
+ enable
+ exit
+interface ethernet 5/1/13
+ enable
+ exit
+interface ethernet 5/1/15
+ enable
+ exit
+interface ethernet 5/1/20
+ enable
+ exit
+interface ethernet 5/1/23
+ enable
+ exit
+interface ethernet 5/1/25
+ enable
+ exit
+interface ethernet 5/1/31 to 5/1/32
+ enable
+ exit
+interface ethernet 5/1/34
+ enable
+ exit
+interface ethernet 5/1/36 to 5/1/37
+ enable
+ exit
+interface ethernet 5/1/39
+ enable
+ exit
+interface ethernet 5/1/41 to 5/1/42
+ enable
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 VERIFY
+!-----------------------------------------------------------------------------
+! Pass: ports untagged in the new VLAN, tagged VLANs unchanged on AP/trunk
+! ports, and device MACs learned on the new VLANs (allow a few minutes)
+show vlan 2010
+show vlan 2700
+show vlan 2800
+show mac-address vlan 2010
+show mac-address vlan 2700
+show mac-address vlan 2800
+show vlan 100
+show vlan 1230
+show vlan 1240
+show vlan 1272
+show interfaces brief
+! When every port passes:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 ROLLBACK (puts every port back on its old VLAN)
+!-----------------------------------------------------------------------------
+! For a single port, use only that port's lines
+configure terminal
+vlan 2010
+ no untagged ethernet 1/1/1 to 1/1/7
+ no untagged ethernet 1/1/9 to 1/1/11
+ exit
+vlan 2700
+ no untagged ethernet 1/1/13
+ no untagged ethernet 1/1/16
+ no untagged ethernet 1/1/18 to 1/1/20
+ no untagged ethernet 1/1/22 to 1/1/27
+ no untagged ethernet 1/1/29
+ no untagged ethernet 1/1/31
+ no untagged ethernet 1/1/33
+ no untagged ethernet 1/1/35 to 1/1/37
+ no untagged ethernet 1/1/39 to 1/1/41
+ no untagged ethernet 1/1/43 to 1/1/44
+ no untagged ethernet 2/1/13 to 2/1/14
+ no untagged ethernet 2/1/16 to 2/1/17
+ no untagged ethernet 2/1/19
+ no untagged ethernet 2/1/22 to 2/1/28
+ no untagged ethernet 2/1/30
+ no untagged ethernet 2/1/33 to 2/1/37
+ no untagged ethernet 2/1/40 to 2/1/48
+ no untagged ethernet 4/1/3
+ no untagged ethernet 4/1/5
+ no untagged ethernet 4/1/8 to 4/1/9
+ no untagged ethernet 4/1/18
+ no untagged ethernet 4/1/22
+ no untagged ethernet 4/1/24 to 4/1/25
+ no untagged ethernet 4/1/37
+ no untagged ethernet 4/1/41 to 4/1/43
+ no untagged ethernet 5/1/4
+ no untagged ethernet 5/1/8 to 5/1/10
+ no untagged ethernet 5/1/13
+ no untagged ethernet 5/1/15
+ no untagged ethernet 5/1/20
+ no untagged ethernet 5/1/23
+ no untagged ethernet 5/1/25
+ no untagged ethernet 5/1/31 to 5/1/32
+ no untagged ethernet 5/1/34
+ no untagged ethernet 5/1/36 to 5/1/37
+ no untagged ethernet 5/1/39
+ no untagged ethernet 5/1/41 to 5/1/42
+ exit
+vlan 2800
+ no untagged ethernet 1/1/12
+ exit
+vlan 100
+ untagged ethernet 1/1/1 to 1/1/7
+ untagged ethernet 1/1/9 to 1/1/11
+ exit
+vlan 1230
+ untagged ethernet 1/1/13
+ untagged ethernet 1/1/16
+ untagged ethernet 1/1/18 to 1/1/19
+ untagged ethernet 1/1/22 to 1/1/23
+ untagged ethernet 1/1/25 to 1/1/27
+ untagged ethernet 1/1/31
+ untagged ethernet 1/1/33
+ untagged ethernet 1/1/35 to 1/1/37
+ untagged ethernet 1/1/39 to 1/1/41
+ untagged ethernet 1/1/43 to 1/1/44
+ untagged ethernet 2/1/13
+ untagged ethernet 2/1/16 to 2/1/17
+ untagged ethernet 2/1/19
+ untagged ethernet 2/1/23
+ untagged ethernet 2/1/25 to 2/1/28
+ untagged ethernet 2/1/30
+ untagged ethernet 2/1/33 to 2/1/37
+ untagged ethernet 2/1/40 to 2/1/48
+ untagged ethernet 4/1/3
+ untagged ethernet 4/1/5
+ untagged ethernet 4/1/8 to 4/1/9
+ untagged ethernet 4/1/18
+ untagged ethernet 4/1/22
+ untagged ethernet 4/1/24 to 4/1/25
+ untagged ethernet 4/1/37
+ untagged ethernet 4/1/41 to 4/1/43
+ untagged ethernet 5/1/4
+ untagged ethernet 5/1/8
+ untagged ethernet 5/1/10
+ untagged ethernet 5/1/13
+ untagged ethernet 5/1/15
+ untagged ethernet 5/1/20
+ untagged ethernet 5/1/23
+ untagged ethernet 5/1/25
+ untagged ethernet 5/1/31
+ untagged ethernet 5/1/34
+ untagged ethernet 5/1/36 to 5/1/37
+ untagged ethernet 5/1/39
+ untagged ethernet 5/1/41 to 5/1/42
+ exit
+vlan 1240
+ untagged ethernet 1/1/12
+ exit
+vlan 1272
+ untagged ethernet 1/1/20
+ untagged ethernet 1/1/24
+ untagged ethernet 1/1/29
+ untagged ethernet 2/1/14
+ untagged ethernet 2/1/22
+ untagged ethernet 2/1/24
+ untagged ethernet 5/1/9
+ untagged ethernet 5/1/32
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 ROLLBACK PORT BOUNCE
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/1 to 1/1/7
+ disable
+ exit
+interface ethernet 1/1/9 to 1/1/13
+ disable
+ exit
+interface ethernet 1/1/16
+ disable
+ exit
+interface ethernet 1/1/18 to 1/1/20
+ disable
+ exit
+interface ethernet 1/1/22 to 1/1/27
+ disable
+ exit
+interface ethernet 1/1/29
+ disable
+ exit
+interface ethernet 1/1/31
+ disable
+ exit
+interface ethernet 1/1/33
+ disable
+ exit
+interface ethernet 1/1/35 to 1/1/37
+ disable
+ exit
+interface ethernet 1/1/39 to 1/1/41
+ disable
+ exit
+interface ethernet 1/1/43 to 1/1/44
+ disable
+ exit
+interface ethernet 2/1/13 to 2/1/14
+ disable
+ exit
+interface ethernet 2/1/16 to 2/1/17
+ disable
+ exit
+interface ethernet 2/1/19
+ disable
+ exit
+interface ethernet 2/1/22 to 2/1/28
+ disable
+ exit
+interface ethernet 2/1/30
+ disable
+ exit
+interface ethernet 2/1/33 to 2/1/37
+ disable
+ exit
+interface ethernet 2/1/40 to 2/1/48
+ disable
+ exit
+interface ethernet 4/1/3
+ disable
+ exit
+interface ethernet 4/1/5
+ disable
+ exit
+interface ethernet 4/1/8 to 4/1/9
+ disable
+ exit
+interface ethernet 4/1/18
+ disable
+ exit
+interface ethernet 4/1/22
+ disable
+ exit
+interface ethernet 4/1/24 to 4/1/25
+ disable
+ exit
+interface ethernet 4/1/37
+ disable
+ exit
+interface ethernet 4/1/41 to 4/1/43
+ disable
+ exit
+interface ethernet 5/1/4
+ disable
+ exit
+interface ethernet 5/1/8 to 5/1/10
+ disable
+ exit
+interface ethernet 5/1/13
+ disable
+ exit
+interface ethernet 5/1/15
+ disable
+ exit
+interface ethernet 5/1/20
+ disable
+ exit
+interface ethernet 5/1/23
+ disable
+ exit
+interface ethernet 5/1/25
+ disable
+ exit
+interface ethernet 5/1/31 to 5/1/32
+ disable
+ exit
+interface ethernet 5/1/34
+ disable
+ exit
+interface ethernet 5/1/36 to 5/1/37
+ disable
+ exit
+interface ethernet 5/1/39
+ disable
+ exit
+interface ethernet 5/1/41 to 5/1/42
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/1 to 1/1/7
+ enable
+ exit
+interface ethernet 1/1/9 to 1/1/13
+ enable
+ exit
+interface ethernet 1/1/16
+ enable
+ exit
+interface ethernet 1/1/18 to 1/1/20
+ enable
+ exit
+interface ethernet 1/1/22 to 1/1/27
+ enable
+ exit
+interface ethernet 1/1/29
+ enable
+ exit
+interface ethernet 1/1/31
+ enable
+ exit
+interface ethernet 1/1/33
+ enable
+ exit
+interface ethernet 1/1/35 to 1/1/37
+ enable
+ exit
+interface ethernet 1/1/39 to 1/1/41
+ enable
+ exit
+interface ethernet 1/1/43 to 1/1/44
+ enable
+ exit
+interface ethernet 2/1/13 to 2/1/14
+ enable
+ exit
+interface ethernet 2/1/16 to 2/1/17
+ enable
+ exit
+interface ethernet 2/1/19
+ enable
+ exit
+interface ethernet 2/1/22 to 2/1/28
+ enable
+ exit
+interface ethernet 2/1/30
+ enable
+ exit
+interface ethernet 2/1/33 to 2/1/37
+ enable
+ exit
+interface ethernet 2/1/40 to 2/1/48
+ enable
+ exit
+interface ethernet 4/1/3
+ enable
+ exit
+interface ethernet 4/1/5
+ enable
+ exit
+interface ethernet 4/1/8 to 4/1/9
+ enable
+ exit
+interface ethernet 4/1/18
+ enable
+ exit
+interface ethernet 4/1/22
+ enable
+ exit
+interface ethernet 4/1/24 to 4/1/25
+ enable
+ exit
+interface ethernet 4/1/37
+ enable
+ exit
+interface ethernet 4/1/41 to 4/1/43
+ enable
+ exit
+interface ethernet 5/1/4
+ enable
+ exit
+interface ethernet 5/1/8 to 5/1/10
+ enable
+ exit
+interface ethernet 5/1/13
+ enable
+ exit
+interface ethernet 5/1/15
+ enable
+ exit
+interface ethernet 5/1/20
+ enable
+ exit
+interface ethernet 5/1/23
+ enable
+ exit
+interface ethernet 5/1/25
+ enable
+ exit
+interface ethernet 5/1/31 to 5/1/32
+ enable
+ exit
+interface ethernet 5/1/34
+ enable
+ exit
+interface ethernet 5/1/36 to 5/1/37
+ enable
+ exit
+interface ethernet 5/1/39
+ enable
+ exit
+interface ethernet 5/1/41 to 5/1/42
+ enable
+ exit
+end
+!
+! After rollback: check ports are back on the old VLANs and MACs are learned, then:
+write memory
+
+!=============================================================================
+! switch-200V-stack-lv6  (192.168.122.11)  -  145 ports
+!=============================================================================
+!
+! Port list (* = port taken from the 200V MAC tab)
+!   1/1/8    1230 -> 2700  AV PDU
+!   1/1/9    1230 -> 2700  AV AV Switcher
+!   1/1/10   1230 -> 2700  AV Audio DSP
+!   1/1/13    100 -> 2010  AP r650-39-4b-d0
+!   1/1/14    100 -> 2010  AP r650-39-4b-c0
+!   1/1/15    100 -> 2010  AP r650-39-52-00
+!   1/1/16    100 -> 2010  AP r650-39-51-00
+!   1/1/17    100 -> 2010  AP r650-39-54-a0
+!   1/1/18    100 -> 2010  AP r650-39-4a-60
+!   1/1/20    100 -> 2010  AP r650-39-5c-50
+!   1/1/21    100 -> 2010  AP r650-39-2d-b0
+!   1/1/22    100 -> 2010  AP r650-39-35-10
+!   1/1/23    100 -> 2010  AP r650-39-52-90
+!   1/1/24    100 -> 2010  AP r650-39-33-f0
+!   1/1/25    100 -> 2010  AP r650-39-34-60
+!   1/1/26    100 -> 2010  AP r650-39-36-80
+!   1/1/27    100 -> 2010  AP r650-39-4c-f0
+!   1/1/28    100 -> 2010  AP r650-39-51-e0
+!   1/1/29    100 -> 2010  AP r650-39-54-60
+!   1/1/37   1212 -> 2600  cctv cam-200V2B23.trinity.unimelb.edu.au
+!   1/1/38   1212 -> 2600  cctv cam-200V2F10.trinity.unimelb.edu.au
+!   1/1/39   1212 -> 2600  cctv cam-200V1D05.trinity.unimelb.edu.au
+!   1/1/40   1212 -> 2600  cctv cam-200V2K14.trinity.unimelb.edu.au
+!   2/1/1    1230 -> 2700  AV NDI-HDMI Decoder
+!   2/1/2    1230 -> 2700  AV Room Camera
+!   2/1/3    1230 -> 2700  AV Projector
+!   2/1/14   1230 -> 2700  AV Touch Panel
+!   2/1/15   1272 -> 2700  AV Airtame
+!   2/1/16   1230 -> 2700  AV AV Switcher; AV PDU
+!   2/1/17   1230 -> 2700  AV Touch Panel
+!   2/1/18   1240 -> 2700  AV Room NUC
+!   2/1/19   1230 -> 2700  AV AV Switcher; AV PDU
+!   2/1/20   1272 -> 2700  AV Airtame
+!   2/1/21   1240 -> 2700  AV Room NUC
+!   2/1/22   1230 -> 2700  AV Touch Panel
+!   2/1/23   1230 -> 2700  AV AV Switcher; AV PDU
+!   2/1/24   1272 -> 2700  AV Airtame
+!   2/1/25   1240 -> 2700  AV Room NUC
+!   2/1/26   1230 -> 2700  AV Touch Panel
+!   2/1/27   1272 -> 2700  AV Airtame
+!   2/1/28   1230 -> 2700  AV AV Switcher; AV PDU
+!   2/1/31   1240 -> 2700  AV Room NUC
+!   2/1/35   1230 -> 2700  AV PTZ Camera
+!   2/1/36   1230 -> 2700  AV Occupancy Sensor
+!   2/1/37   1230 -> 2700  AV Room Camera
+!   2/1/38   1230 -> 2700  AV Touch Panel
+!   2/1/39   1230 -> 2700  AV Occupancy Sensor
+!   2/1/40   1230 -> 2700  AV Room Camera
+!   2/1/41   1230 -> 2700  AV Projector
+!   2/1/42   1230 -> 2700  AV Projector
+!   2/1/43   1230 -> 2700  AV Touch Panel
+!   2/1/44   1230 -> 2700  AV Occupancy Sensor
+!   2/1/45   1230 -> 2700  AV Room Camera
+!   3/1/11   1240 -> 2700  AV Room NUC
+!   3/1/12   1272 -> 2700  AV Airtame
+!   3/1/13   1230 -> 2700  AV AV Switcher; AV PDU
+!   3/1/14   1230 -> 2700  AV Touch Panel
+!   3/1/15   1240 -> 2700  AV Room NUC
+!   3/1/16   1272 -> 2700  AV Airtame
+!   3/1/17   1230 -> 2700  AV Touch Panel
+!   3/1/18   1230 -> 2700  AV AV Switcher; AV PDU
+!   3/1/19   1272 -> 2700  AV Airtame
+!   3/1/20   1230 -> 2700  AV Room NUC
+!   3/1/24   1230 -> 2700  AV Touch Panel
+!   3/1/25   1230 -> 2700  AV Touch Panel
+!   3/1/26   1230 -> 2700  AV Projector
+!   3/1/27   1230 -> 2700  AV Room Camera
+!   3/1/28   1230 -> 2700  AV Occupancy Sensor
+!   3/1/29   1230 -> 2700  AV Touch Panel
+!   3/1/30   1230 -> 2700  AV Room Camera
+!   3/1/31   1230 -> 2700  AV Occupancy Sensor
+!   3/1/32   1230 -> 2700  AV Touch Panel
+!   3/1/33   1230 -> 2700  AV Room Camera
+!   3/1/34   1230 -> 2700  AV Occupancy Sensor
+!   3/1/35   1230 -> 2700  AV Touch Panel
+!   3/1/36   1230 -> 2700  AV Room Camera
+!   3/1/37   1230 -> 2700  AV Occupancy Sensor
+!   3/1/38   1230 -> 2700  AV Occupancy Sensor
+!   3/1/39   1230 -> 2700  AV Room Camera
+!   3/1/40   1230 -> 2700  AV Occupancy Sensor
+!   3/1/41   1230 -> 2700  AV Room Camera
+!   3/1/42   1230 -> 2700  AV Occupancy Sensor
+!   3/1/43   1230 -> 2700  AV Room Camera
+!   3/1/44   1230 -> 2700  AV Occupancy Sensor
+!   3/1/45   1230 -> 2700  AV Room Camera
+!   3/1/46   1230 -> 2700  AV Occupancy Sensor
+!   3/1/47   1230 -> 2700  AV Room Camera
+!   3/1/48   1230 -> 2700  AV Occupancy Sensor
+!   4/1/4    1230 -> 2700  AV Touch Panel
+!   4/1/5    1230 -> 2700  AV Projector Screen
+!   4/1/6    1230 -> 2700  AV Room Camera
+!   4/1/8    1230 -> 2700  AV Touch Panel
+!   4/1/10   1230 -> 2700  AV Occupancy Sensor
+!   4/1/11   1230 -> 2700  AV Room Camera
+!   4/1/12   1230 -> 2700  AV Occupancy Sensor
+!   4/1/13   1272 -> 2700  AV Airtame
+!   4/1/14   1230 -> 2700  AV AV Switcher
+!   4/1/15   1230 -> 2700  AV PDU
+!   4/1/16   1230 -> 2700  AV Projector
+!   4/1/17   1230 -> 2700  AV Touch Panel
+!   4/1/18   1240 -> 2700  AV Room NUC
+!   4/1/19   1230 -> 2700  AV Occupancy Sensor
+!   4/1/20   1230 -> 2700  AV Room Camera
+!   4/1/21   1272 -> 2700  AV Airtame
+!   4/1/22   1230 -> 2700  AV AV Switcher; AV PDU
+!   4/1/23   1240 -> 2700  AV Room NUC
+!  *4/1/24   1213 -> 2510  PhysicalAccess cloe-000-200v
+!   5/1/1    1240 -> 2800  printer 200v-lvl-5-quiet-study
+!   5/1/34   1230 -> 2700  AV Projector Screen
+!   5/1/38   1240 -> 2800  printer 200v-lvl-5-eap-office
+!   5/1/42   1240 -> 2800  printer 200v-lvl-5-staffroom2
+!   6/1/20   1230 -> 2700  AV Recorder
+!   6/1/24   1272 -> 2700  AV Airtame
+!   6/1/26   1272 -> 2700  AV Airtame
+!   6/1/27   1230 -> 2700  AV AV Switcher; AV PDU
+!   6/1/28   1240 -> 2700  AV Room NUC
+!   6/1/34   1230 -> 2700  AV Projector
+!   6/1/38   1240 -> 2700  AV Room NUC
+!   6/1/39   1272 -> 2700  AV Airtame
+!   6/1/40   1230 -> 2700  AV AV Switcher; AV PDU
+!   6/1/45   1230 -> 2700  AV LCD
+!   6/1/46   1230 -> 2700  AV LCD
+!   7/1/3    1230 -> 2700  AV Projector
+!   7/1/4    1230 -> 2700  AV Projector
+!   7/1/5    1230 -> 2700  AV Projector
+!   7/1/8    1230 -> 2700  AV Projector
+!   7/1/9    1230 -> 2700  AV Projector
+!   7/1/10   1272 -> 2700  AV Airtame
+!   7/1/11   1230 -> 2700  AV Projector
+!   7/1/14   1230 -> 2700  AV PDU
+!   7/1/17   1230 -> 2700  AV Projector
+!   7/1/19   1240 -> 2800  printer 200v-lvl-6-staff-corridor
+!   7/1/22   1272 -> 2700  AV Airtame
+!   7/1/23   1230 -> 2700  AV AV Switcher; AV PDU
+!   7/1/24   1240 -> 2700  AV Room NUC
+!   7/1/27   1272 -> 2700  AV Airtame
+!   7/1/28   1230 -> 2700  AV AV Switcher; AV PDU
+!   7/1/30   1240 -> 2700  AV Room NUC
+!   7/1/31   1272 -> 2700  AV Airtame
+!   7/1/32   1230 -> 2700  AV AV Switcher; AV PDU
+!   7/1/33   1240 -> 2700  AV Room NUC
+!   7/1/34   1230 -> 2700  AV Projector
+!   7/1/35   1230 -> 2700  AV AV Switcher; AV PDU
+!   7/1/40   1230 -> 2700  AV Projector
+!   7/1/44   1230 -> 2700  AV Projector
+!
+! Expected untagged port counts on the new VLANs after the change (this file only):
+!   VLAN 2010: +16 ports
+!   VLAN 2510: +1 ports
+!   VLAN 2600: +4 ports
+!   VLAN 2700: +120 ports
+!   VLAN 2800: +4 ports
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+! Save the output of each command to compare after the change
+show stack
+show vlan 100
+show vlan 1212
+show vlan 1213
+show vlan 1230
+show vlan 1240
+show vlan 1272
+show vlan 2010
+show vlan 2510
+show vlan 2600
+show vlan 2700
+show vlan 2800
+show mac-address vlan 100
+show mac-address vlan 1212
+show mac-address vlan 1213
+show mac-address vlan 1230
+show mac-address vlan 1240
+show mac-address vlan 1272
+show interfaces brief
+! Copy the running config off the switch before changing it:
+! copy running-config tftp <server> switch-200V-stack-lv6-pre-cutover.cfg
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 100
+ no untagged ethernet 1/1/13 to 1/1/18
+ no untagged ethernet 1/1/20 to 1/1/29
+ exit
+vlan 1212
+ no untagged ethernet 1/1/37 to 1/1/40
+ exit
+vlan 1213
+ no untagged ethernet 4/1/24
+ exit
+vlan 1230
+ no untagged ethernet 1/1/8 to 1/1/10
+ no untagged ethernet 2/1/1 to 2/1/3
+ no untagged ethernet 2/1/14
+ no untagged ethernet 2/1/16 to 2/1/17
+ no untagged ethernet 2/1/19
+ no untagged ethernet 2/1/22 to 2/1/23
+ no untagged ethernet 2/1/26
+ no untagged ethernet 2/1/28
+ no untagged ethernet 2/1/35 to 2/1/45
+ no untagged ethernet 3/1/13 to 3/1/14
+ no untagged ethernet 3/1/17 to 3/1/18
+ no untagged ethernet 3/1/20
+ no untagged ethernet 3/1/24 to 3/1/48
+ no untagged ethernet 4/1/4 to 4/1/6
+ no untagged ethernet 4/1/8
+ no untagged ethernet 4/1/10 to 4/1/12
+ no untagged ethernet 4/1/14 to 4/1/17
+ no untagged ethernet 4/1/19 to 4/1/20
+ no untagged ethernet 4/1/22
+ no untagged ethernet 5/1/34
+ no untagged ethernet 6/1/20
+ no untagged ethernet 6/1/27
+ no untagged ethernet 6/1/34
+ no untagged ethernet 6/1/40
+ no untagged ethernet 6/1/45 to 6/1/46
+ no untagged ethernet 7/1/3 to 7/1/5
+ no untagged ethernet 7/1/8 to 7/1/9
+ no untagged ethernet 7/1/11
+ no untagged ethernet 7/1/14
+ no untagged ethernet 7/1/17
+ no untagged ethernet 7/1/23
+ no untagged ethernet 7/1/28
+ no untagged ethernet 7/1/32
+ no untagged ethernet 7/1/34 to 7/1/35
+ no untagged ethernet 7/1/40
+ no untagged ethernet 7/1/44
+ exit
+vlan 1240
+ no untagged ethernet 2/1/18
+ no untagged ethernet 2/1/21
+ no untagged ethernet 2/1/25
+ no untagged ethernet 2/1/31
+ no untagged ethernet 3/1/11
+ no untagged ethernet 3/1/15
+ no untagged ethernet 4/1/18
+ no untagged ethernet 4/1/23
+ no untagged ethernet 5/1/1
+ no untagged ethernet 5/1/38
+ no untagged ethernet 5/1/42
+ no untagged ethernet 6/1/28
+ no untagged ethernet 6/1/38
+ no untagged ethernet 7/1/19
+ no untagged ethernet 7/1/24
+ no untagged ethernet 7/1/30
+ no untagged ethernet 7/1/33
+ exit
+vlan 1272
+ no untagged ethernet 2/1/15
+ no untagged ethernet 2/1/20
+ no untagged ethernet 2/1/24
+ no untagged ethernet 2/1/27
+ no untagged ethernet 3/1/12
+ no untagged ethernet 3/1/16
+ no untagged ethernet 3/1/19
+ no untagged ethernet 4/1/13
+ no untagged ethernet 4/1/21
+ no untagged ethernet 6/1/24
+ no untagged ethernet 6/1/26
+ no untagged ethernet 6/1/39
+ no untagged ethernet 7/1/10
+ no untagged ethernet 7/1/22
+ no untagged ethernet 7/1/27
+ no untagged ethernet 7/1/31
+ exit
+vlan 2010
+ untagged ethernet 1/1/13 to 1/1/18
+ untagged ethernet 1/1/20 to 1/1/29
+ exit
+vlan 2510
+ untagged ethernet 4/1/24
+ exit
+vlan 2600
+ untagged ethernet 1/1/37 to 1/1/40
+ exit
+vlan 2700
+ untagged ethernet 1/1/8 to 1/1/10
+ untagged ethernet 2/1/1 to 2/1/3
+ untagged ethernet 2/1/14 to 2/1/28
+ untagged ethernet 2/1/31
+ untagged ethernet 2/1/35 to 2/1/45
+ untagged ethernet 3/1/11 to 3/1/20
+ untagged ethernet 3/1/24 to 3/1/48
+ untagged ethernet 4/1/4 to 4/1/6
+ untagged ethernet 4/1/8
+ untagged ethernet 4/1/10 to 4/1/23
+ untagged ethernet 5/1/34
+ untagged ethernet 6/1/20
+ untagged ethernet 6/1/24
+ untagged ethernet 6/1/26 to 6/1/28
+ untagged ethernet 6/1/34
+ untagged ethernet 6/1/38 to 6/1/40
+ untagged ethernet 6/1/45 to 6/1/46
+ untagged ethernet 7/1/3 to 7/1/5
+ untagged ethernet 7/1/8 to 7/1/11
+ untagged ethernet 7/1/14
+ untagged ethernet 7/1/17
+ untagged ethernet 7/1/22 to 7/1/24
+ untagged ethernet 7/1/27 to 7/1/28
+ untagged ethernet 7/1/30 to 7/1/35
+ untagged ethernet 7/1/40
+ untagged ethernet 7/1/44
+ exit
+vlan 2800
+ untagged ethernet 5/1/1
+ untagged ethernet 5/1/38
+ untagged ethernet 5/1/42
+ untagged ethernet 7/1/19
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 PORT BOUNCE
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/8 to 1/1/10
+ disable
+ exit
+interface ethernet 1/1/13 to 1/1/18
+ disable
+ exit
+interface ethernet 1/1/20 to 1/1/29
+ disable
+ exit
+interface ethernet 1/1/37 to 1/1/40
+ disable
+ exit
+interface ethernet 2/1/1 to 2/1/3
+ disable
+ exit
+interface ethernet 2/1/14 to 2/1/28
+ disable
+ exit
+interface ethernet 2/1/31
+ disable
+ exit
+interface ethernet 2/1/35 to 2/1/45
+ disable
+ exit
+interface ethernet 3/1/11 to 3/1/20
+ disable
+ exit
+interface ethernet 3/1/24 to 3/1/48
+ disable
+ exit
+interface ethernet 4/1/4 to 4/1/6
+ disable
+ exit
+interface ethernet 4/1/8
+ disable
+ exit
+interface ethernet 4/1/10 to 4/1/24
+ disable
+ exit
+interface ethernet 5/1/1
+ disable
+ exit
+interface ethernet 5/1/34
+ disable
+ exit
+interface ethernet 5/1/38
+ disable
+ exit
+interface ethernet 5/1/42
+ disable
+ exit
+interface ethernet 6/1/20
+ disable
+ exit
+interface ethernet 6/1/24
+ disable
+ exit
+interface ethernet 6/1/26 to 6/1/28
+ disable
+ exit
+interface ethernet 6/1/34
+ disable
+ exit
+interface ethernet 6/1/38 to 6/1/40
+ disable
+ exit
+interface ethernet 6/1/45 to 6/1/46
+ disable
+ exit
+interface ethernet 7/1/3 to 7/1/5
+ disable
+ exit
+interface ethernet 7/1/8 to 7/1/11
+ disable
+ exit
+interface ethernet 7/1/14
+ disable
+ exit
+interface ethernet 7/1/17
+ disable
+ exit
+interface ethernet 7/1/19
+ disable
+ exit
+interface ethernet 7/1/22 to 7/1/24
+ disable
+ exit
+interface ethernet 7/1/27 to 7/1/28
+ disable
+ exit
+interface ethernet 7/1/30 to 7/1/35
+ disable
+ exit
+interface ethernet 7/1/40
+ disable
+ exit
+interface ethernet 7/1/44
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/8 to 1/1/10
+ enable
+ exit
+interface ethernet 1/1/13 to 1/1/18
+ enable
+ exit
+interface ethernet 1/1/20 to 1/1/29
+ enable
+ exit
+interface ethernet 1/1/37 to 1/1/40
+ enable
+ exit
+interface ethernet 2/1/1 to 2/1/3
+ enable
+ exit
+interface ethernet 2/1/14 to 2/1/28
+ enable
+ exit
+interface ethernet 2/1/31
+ enable
+ exit
+interface ethernet 2/1/35 to 2/1/45
+ enable
+ exit
+interface ethernet 3/1/11 to 3/1/20
+ enable
+ exit
+interface ethernet 3/1/24 to 3/1/48
+ enable
+ exit
+interface ethernet 4/1/4 to 4/1/6
+ enable
+ exit
+interface ethernet 4/1/8
+ enable
+ exit
+interface ethernet 4/1/10 to 4/1/24
+ enable
+ exit
+interface ethernet 5/1/1
+ enable
+ exit
+interface ethernet 5/1/34
+ enable
+ exit
+interface ethernet 5/1/38
+ enable
+ exit
+interface ethernet 5/1/42
+ enable
+ exit
+interface ethernet 6/1/20
+ enable
+ exit
+interface ethernet 6/1/24
+ enable
+ exit
+interface ethernet 6/1/26 to 6/1/28
+ enable
+ exit
+interface ethernet 6/1/34
+ enable
+ exit
+interface ethernet 6/1/38 to 6/1/40
+ enable
+ exit
+interface ethernet 6/1/45 to 6/1/46
+ enable
+ exit
+interface ethernet 7/1/3 to 7/1/5
+ enable
+ exit
+interface ethernet 7/1/8 to 7/1/11
+ enable
+ exit
+interface ethernet 7/1/14
+ enable
+ exit
+interface ethernet 7/1/17
+ enable
+ exit
+interface ethernet 7/1/19
+ enable
+ exit
+interface ethernet 7/1/22 to 7/1/24
+ enable
+ exit
+interface ethernet 7/1/27 to 7/1/28
+ enable
+ exit
+interface ethernet 7/1/30 to 7/1/35
+ enable
+ exit
+interface ethernet 7/1/40
+ enable
+ exit
+interface ethernet 7/1/44
+ enable
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 VERIFY
+!-----------------------------------------------------------------------------
+! Pass: ports untagged in the new VLAN, tagged VLANs unchanged on AP/trunk
+! ports, and device MACs learned on the new VLANs (allow a few minutes)
+show vlan 2010
+show vlan 2510
+show vlan 2600
+show vlan 2700
+show vlan 2800
+show mac-address vlan 2010
+show mac-address vlan 2510
+show mac-address vlan 2600
+show mac-address vlan 2700
+show mac-address vlan 2800
+show vlan 100
+show vlan 1212
+show vlan 1213
+show vlan 1230
+show vlan 1240
+show vlan 1272
+show interfaces brief
+! When every port passes:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 ROLLBACK (puts every port back on its old VLAN)
+!-----------------------------------------------------------------------------
+! For a single port, use only that port's lines
+configure terminal
+vlan 2010
+ no untagged ethernet 1/1/13 to 1/1/18
+ no untagged ethernet 1/1/20 to 1/1/29
+ exit
+vlan 2510
+ no untagged ethernet 4/1/24
+ exit
+vlan 2600
+ no untagged ethernet 1/1/37 to 1/1/40
+ exit
+vlan 2700
+ no untagged ethernet 1/1/8 to 1/1/10
+ no untagged ethernet 2/1/1 to 2/1/3
+ no untagged ethernet 2/1/14 to 2/1/28
+ no untagged ethernet 2/1/31
+ no untagged ethernet 2/1/35 to 2/1/45
+ no untagged ethernet 3/1/11 to 3/1/20
+ no untagged ethernet 3/1/24 to 3/1/48
+ no untagged ethernet 4/1/4 to 4/1/6
+ no untagged ethernet 4/1/8
+ no untagged ethernet 4/1/10 to 4/1/23
+ no untagged ethernet 5/1/34
+ no untagged ethernet 6/1/20
+ no untagged ethernet 6/1/24
+ no untagged ethernet 6/1/26 to 6/1/28
+ no untagged ethernet 6/1/34
+ no untagged ethernet 6/1/38 to 6/1/40
+ no untagged ethernet 6/1/45 to 6/1/46
+ no untagged ethernet 7/1/3 to 7/1/5
+ no untagged ethernet 7/1/8 to 7/1/11
+ no untagged ethernet 7/1/14
+ no untagged ethernet 7/1/17
+ no untagged ethernet 7/1/22 to 7/1/24
+ no untagged ethernet 7/1/27 to 7/1/28
+ no untagged ethernet 7/1/30 to 7/1/35
+ no untagged ethernet 7/1/40
+ no untagged ethernet 7/1/44
+ exit
+vlan 2800
+ no untagged ethernet 5/1/1
+ no untagged ethernet 5/1/38
+ no untagged ethernet 5/1/42
+ no untagged ethernet 7/1/19
+ exit
+vlan 100
+ untagged ethernet 1/1/13 to 1/1/18
+ untagged ethernet 1/1/20 to 1/1/29
+ exit
+vlan 1212
+ untagged ethernet 1/1/37 to 1/1/40
+ exit
+vlan 1213
+ untagged ethernet 4/1/24
+ exit
+vlan 1230
+ untagged ethernet 1/1/8 to 1/1/10
+ untagged ethernet 2/1/1 to 2/1/3
+ untagged ethernet 2/1/14
+ untagged ethernet 2/1/16 to 2/1/17
+ untagged ethernet 2/1/19
+ untagged ethernet 2/1/22 to 2/1/23
+ untagged ethernet 2/1/26
+ untagged ethernet 2/1/28
+ untagged ethernet 2/1/35 to 2/1/45
+ untagged ethernet 3/1/13 to 3/1/14
+ untagged ethernet 3/1/17 to 3/1/18
+ untagged ethernet 3/1/20
+ untagged ethernet 3/1/24 to 3/1/48
+ untagged ethernet 4/1/4 to 4/1/6
+ untagged ethernet 4/1/8
+ untagged ethernet 4/1/10 to 4/1/12
+ untagged ethernet 4/1/14 to 4/1/17
+ untagged ethernet 4/1/19 to 4/1/20
+ untagged ethernet 4/1/22
+ untagged ethernet 5/1/34
+ untagged ethernet 6/1/20
+ untagged ethernet 6/1/27
+ untagged ethernet 6/1/34
+ untagged ethernet 6/1/40
+ untagged ethernet 6/1/45 to 6/1/46
+ untagged ethernet 7/1/3 to 7/1/5
+ untagged ethernet 7/1/8 to 7/1/9
+ untagged ethernet 7/1/11
+ untagged ethernet 7/1/14
+ untagged ethernet 7/1/17
+ untagged ethernet 7/1/23
+ untagged ethernet 7/1/28
+ untagged ethernet 7/1/32
+ untagged ethernet 7/1/34 to 7/1/35
+ untagged ethernet 7/1/40
+ untagged ethernet 7/1/44
+ exit
+vlan 1240
+ untagged ethernet 2/1/18
+ untagged ethernet 2/1/21
+ untagged ethernet 2/1/25
+ untagged ethernet 2/1/31
+ untagged ethernet 3/1/11
+ untagged ethernet 3/1/15
+ untagged ethernet 4/1/18
+ untagged ethernet 4/1/23
+ untagged ethernet 5/1/1
+ untagged ethernet 5/1/38
+ untagged ethernet 5/1/42
+ untagged ethernet 6/1/28
+ untagged ethernet 6/1/38
+ untagged ethernet 7/1/19
+ untagged ethernet 7/1/24
+ untagged ethernet 7/1/30
+ untagged ethernet 7/1/33
+ exit
+vlan 1272
+ untagged ethernet 2/1/15
+ untagged ethernet 2/1/20
+ untagged ethernet 2/1/24
+ untagged ethernet 2/1/27
+ untagged ethernet 3/1/12
+ untagged ethernet 3/1/16
+ untagged ethernet 3/1/19
+ untagged ethernet 4/1/13
+ untagged ethernet 4/1/21
+ untagged ethernet 6/1/24
+ untagged ethernet 6/1/26
+ untagged ethernet 6/1/39
+ untagged ethernet 7/1/10
+ untagged ethernet 7/1/22
+ untagged ethernet 7/1/27
+ untagged ethernet 7/1/31
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 ROLLBACK PORT BOUNCE
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/8 to 1/1/10
+ disable
+ exit
+interface ethernet 1/1/13 to 1/1/18
+ disable
+ exit
+interface ethernet 1/1/20 to 1/1/29
+ disable
+ exit
+interface ethernet 1/1/37 to 1/1/40
+ disable
+ exit
+interface ethernet 2/1/1 to 2/1/3
+ disable
+ exit
+interface ethernet 2/1/14 to 2/1/28
+ disable
+ exit
+interface ethernet 2/1/31
+ disable
+ exit
+interface ethernet 2/1/35 to 2/1/45
+ disable
+ exit
+interface ethernet 3/1/11 to 3/1/20
+ disable
+ exit
+interface ethernet 3/1/24 to 3/1/48
+ disable
+ exit
+interface ethernet 4/1/4 to 4/1/6
+ disable
+ exit
+interface ethernet 4/1/8
+ disable
+ exit
+interface ethernet 4/1/10 to 4/1/24
+ disable
+ exit
+interface ethernet 5/1/1
+ disable
+ exit
+interface ethernet 5/1/34
+ disable
+ exit
+interface ethernet 5/1/38
+ disable
+ exit
+interface ethernet 5/1/42
+ disable
+ exit
+interface ethernet 6/1/20
+ disable
+ exit
+interface ethernet 6/1/24
+ disable
+ exit
+interface ethernet 6/1/26 to 6/1/28
+ disable
+ exit
+interface ethernet 6/1/34
+ disable
+ exit
+interface ethernet 6/1/38 to 6/1/40
+ disable
+ exit
+interface ethernet 6/1/45 to 6/1/46
+ disable
+ exit
+interface ethernet 7/1/3 to 7/1/5
+ disable
+ exit
+interface ethernet 7/1/8 to 7/1/11
+ disable
+ exit
+interface ethernet 7/1/14
+ disable
+ exit
+interface ethernet 7/1/17
+ disable
+ exit
+interface ethernet 7/1/19
+ disable
+ exit
+interface ethernet 7/1/22 to 7/1/24
+ disable
+ exit
+interface ethernet 7/1/27 to 7/1/28
+ disable
+ exit
+interface ethernet 7/1/30 to 7/1/35
+ disable
+ exit
+interface ethernet 7/1/40
+ disable
+ exit
+interface ethernet 7/1/44
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/8 to 1/1/10
+ enable
+ exit
+interface ethernet 1/1/13 to 1/1/18
+ enable
+ exit
+interface ethernet 1/1/20 to 1/1/29
+ enable
+ exit
+interface ethernet 1/1/37 to 1/1/40
+ enable
+ exit
+interface ethernet 2/1/1 to 2/1/3
+ enable
+ exit
+interface ethernet 2/1/14 to 2/1/28
+ enable
+ exit
+interface ethernet 2/1/31
+ enable
+ exit
+interface ethernet 2/1/35 to 2/1/45
+ enable
+ exit
+interface ethernet 3/1/11 to 3/1/20
+ enable
+ exit
+interface ethernet 3/1/24 to 3/1/48
+ enable
+ exit
+interface ethernet 4/1/4 to 4/1/6
+ enable
+ exit
+interface ethernet 4/1/8
+ enable
+ exit
+interface ethernet 4/1/10 to 4/1/24
+ enable
+ exit
+interface ethernet 5/1/1
+ enable
+ exit
+interface ethernet 5/1/34
+ enable
+ exit
+interface ethernet 5/1/38
+ enable
+ exit
+interface ethernet 5/1/42
+ enable
+ exit
+interface ethernet 6/1/20
+ enable
+ exit
+interface ethernet 6/1/24
+ enable
+ exit
+interface ethernet 6/1/26 to 6/1/28
+ enable
+ exit
+interface ethernet 6/1/34
+ enable
+ exit
+interface ethernet 6/1/38 to 6/1/40
+ enable
+ exit
+interface ethernet 6/1/45 to 6/1/46
+ enable
+ exit
+interface ethernet 7/1/3 to 7/1/5
+ enable
+ exit
+interface ethernet 7/1/8 to 7/1/11
+ enable
+ exit
+interface ethernet 7/1/14
+ enable
+ exit
+interface ethernet 7/1/17
+ enable
+ exit
+interface ethernet 7/1/19
+ enable
+ exit
+interface ethernet 7/1/22 to 7/1/24
+ enable
+ exit
+interface ethernet 7/1/27 to 7/1/28
+ enable
+ exit
+interface ethernet 7/1/30 to 7/1/35
+ enable
+ exit
+interface ethernet 7/1/40
+ enable
+ exit
+interface ethernet 7/1/44
+ enable
+ exit
+end
+!
+! After rollback: check ports are back on the old VLANs and MACs are learned, then:
+write memory
+
+!=============================================================================
+! switch-200V-Tutorial-6.03  (192.168.122.15)  -  6 ports
+!=============================================================================
+!
+! Port list (* = port taken from the 200V MAC tab)
+!   1/1/2    1230 -> 2700  AV Room Camera
+!   1/1/4    1230 -> 2700  AV Occupancy Sensor
+!   1/1/5    1230 -> 2700  AV Room NUC
+!   1/1/6    1230 -> 2700  AV Touch Panel
+!   1/1/7    1272 -> 2700  AV Airtame
+!   1/1/8    1230 -> 2700  AV PDU
+!
+! Expected untagged port counts on the new VLANs after the change (this file only):
+!   VLAN 2700: +6 ports
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+! Save the output of each command to compare after the change
+show vlan 1230
+show vlan 1272
+show vlan 2700
+show mac-address vlan 1230
+show mac-address vlan 1272
+show interfaces brief
+! Copy the running config off the switch before changing it:
+! copy running-config tftp <server> switch-200V-Tutorial-6.03-pre-cutover.cfg
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 1230
+ no untagged ethernet 1/1/2
+ no untagged ethernet 1/1/4 to 1/1/6
+ no untagged ethernet 1/1/8
+ exit
+vlan 1272
+ no untagged ethernet 1/1/7
+ exit
+vlan 2700
+ untagged ethernet 1/1/2
+ untagged ethernet 1/1/4 to 1/1/8
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 PORT BOUNCE
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/2
+ disable
+ exit
+interface ethernet 1/1/4 to 1/1/8
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/2
+ enable
+ exit
+interface ethernet 1/1/4 to 1/1/8
+ enable
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 VERIFY
+!-----------------------------------------------------------------------------
+! Pass: ports untagged in the new VLAN, tagged VLANs unchanged on AP/trunk
+! ports, and device MACs learned on the new VLANs (allow a few minutes)
+show vlan 2700
+show mac-address vlan 2700
+show vlan 1230
+show vlan 1272
+show interfaces brief
+! When every port passes:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 ROLLBACK (puts every port back on its old VLAN)
+!-----------------------------------------------------------------------------
+! For a single port, use only that port's lines
+configure terminal
+vlan 2700
+ no untagged ethernet 1/1/2
+ no untagged ethernet 1/1/4 to 1/1/8
+ exit
+vlan 1230
+ untagged ethernet 1/1/2
+ untagged ethernet 1/1/4 to 1/1/6
+ untagged ethernet 1/1/8
+ exit
+vlan 1272
+ untagged ethernet 1/1/7
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 ROLLBACK PORT BOUNCE
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/2
+ disable
+ exit
+interface ethernet 1/1/4 to 1/1/8
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/2
+ enable
+ exit
+interface ethernet 1/1/4 to 1/1/8
+ enable
+ exit
+end
+!
+! After rollback: check ports are back on the old VLANs and MACs are learned, then:
+write memory
+
+!=============================================================================
+! END
+!=============================================================================
