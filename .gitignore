@@ -1,4 +1,6 @@
-# Track only the Trinity plan; everything else in this folder stays local
+# Track only the Trinity plans; everything else in this folder stays local
 *
 !.gitignore
 !Trinity College Melbourne - SmartZone Implementation Plan.docx
+!Trinity 200V Pilot VLAN Migration.docx
+!200V-pilot-vlan-migration-ICX.txt

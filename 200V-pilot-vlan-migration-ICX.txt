@@ -1,0 +1,1206 @@
+! 200V pilot - VLAN migration, Ruckus ICX FastIron 10.0.10g (SPR10010g)
+! Source: 200v pilot.xlsx - 61 devices
+! Switchport values in the sheet were converted to dates by Excel; decoded as unit/1/port
+! (e.g. 6/01/1935 -> 6/1/35). Confirm with the MAC pre-check below before applying.
+!
+!==============================================================================
+! switch-200V-stack-lv3  (31 ports, 31 devices)
+!==============================================================================
+!
+! --- Port list ---
+! Port       Old -> New   MAC (ICX)       New IP         Device
+! 1/1/6      100 -> 2010  5c83.6c3d.9840  10.21.1.11     AP: r650-3d-98-40
+! 2/1/1     1212 -> 2600  0002.d1ae.d71b  10.21.25.15    cctv: cam-200v-AE-D7-1B
+! 2/1/2     1212 -> 2600  0002.d1ae.d73a  10.21.25.17    cctv: cam-200v-AE-D7-3A
+! 2/1/3     1212 -> 2600  0002.d1ae.d6f4  10.21.25.25    cctv: cam-200v-ae-d6-f4
+! 2/1/4     1212 -> 2600  0002.d1ae.d6f7  10.21.25.22    cctv: cam-200v-AE-D6-F7
+! 2/1/5     1212 -> 2600  0002.d1ae.d70a  10.21.25.14    cctv: cam-200v-AE-D7-0A
+! 2/1/6     1212 -> 2600  0002.d1ae.d6ed  10.21.25.16    cctv: cam-200v-AE-D6-ED
+! 2/1/7     1212 -> 2600  0002.d1ae.d701  10.21.25.21    cctv: cam-200v-AE-D7-01
+! 3/1/37    1240 -> 2800  dcc2.c976.5667  10.21.27.6     printer: 200v-lvl3-student-corridor
+! 3/1/44    1240 -> 2100  -               -              General: outlet 200V3B20
+! 3/1/45    1240 -> 2100  -               -              General: outlet 200V3B21
+! 3/1/46    1240 -> 2100  -               -              General: outlet 200V3B22
+! 3/1/47       1 -> 2100  -               -              General: outlet 200V3B23
+! 3/1/48    1240 -> 2100  -               -              General: outlet 200V3B24
+! 4/1/1     1240 -> 2100  -               -              General: outlet 200V3C1
+! 4/1/5        1 -> 2100  -               -              General: outlet 200V3C5
+! 4/1/6        1 -> 2100  -               -              General: outlet 200V3C6
+! 4/1/7     1240 -> 2100  -               -              General: outlet 200V3C7
+! 4/1/8     1240 -> 2100  -               -              General: outlet 200V3C8
+! 4/1/9     1240 -> 2100  -               -              General: outlet 200V3C9
+! 4/1/10    1240 -> 2100  -               -              General: outlet 200V3C10
+! 4/1/11    1240 -> 2100  -               -              General: outlet 200V3C11
+! 4/1/12    1240 -> 2100  -               -              General: outlet 200V3C12
+! 4/1/13       1 -> 2100  -               -              General: outlet 200V3C13
+! 4/1/14       1 -> 2100  -               -              General: outlet 200V3C14
+! 4/1/15    1240 -> 2100  -               -              General: outlet 200V3C15
+! 4/1/16    1240 -> 2100  -               -              General: outlet 200V3C16
+! 4/1/17    1240 -> 2100  -               -              General: outlet 200V3C17
+! 4/1/18    1240 -> 2100  -               -              General: outlet 200V3C18
+! 4/1/19    1240 -> 2100  -               -              General: outlet 200V3C19
+! 4/1/20    1240 -> 2100  -               -              General: outlet 200V3C20
+!
+! --- PRE-CHECKS (run in exec mode, compare with list above) ---
+show vlan 2010
+show vlan 2100
+show vlan 2600
+show vlan 2800
+show vlan ethernet 1/1/6
+show mac-address ethernet 1/1/6
+show vlan ethernet 2/1/1
+show mac-address ethernet 2/1/1
+show vlan ethernet 2/1/2
+show mac-address ethernet 2/1/2
+show vlan ethernet 2/1/3
+show mac-address ethernet 2/1/3
+show vlan ethernet 2/1/4
+show mac-address ethernet 2/1/4
+show vlan ethernet 2/1/5
+show mac-address ethernet 2/1/5
+show vlan ethernet 2/1/6
+show mac-address ethernet 2/1/6
+show vlan ethernet 2/1/7
+show mac-address ethernet 2/1/7
+show vlan ethernet 3/1/37
+show mac-address ethernet 3/1/37
+show vlan ethernet 3/1/44
+show mac-address ethernet 3/1/44
+show vlan ethernet 3/1/45
+show mac-address ethernet 3/1/45
+show vlan ethernet 3/1/46
+show mac-address ethernet 3/1/46
+show vlan ethernet 3/1/47
+show mac-address ethernet 3/1/47
+show vlan ethernet 3/1/48
+show mac-address ethernet 3/1/48
+show vlan ethernet 4/1/1
+show mac-address ethernet 4/1/1
+show vlan ethernet 4/1/5
+show mac-address ethernet 4/1/5
+show vlan ethernet 4/1/6
+show mac-address ethernet 4/1/6
+show vlan ethernet 4/1/7
+show mac-address ethernet 4/1/7
+show vlan ethernet 4/1/8
+show mac-address ethernet 4/1/8
+show vlan ethernet 4/1/9
+show mac-address ethernet 4/1/9
+show vlan ethernet 4/1/10
+show mac-address ethernet 4/1/10
+show vlan ethernet 4/1/11
+show mac-address ethernet 4/1/11
+show vlan ethernet 4/1/12
+show mac-address ethernet 4/1/12
+show vlan ethernet 4/1/13
+show mac-address ethernet 4/1/13
+show vlan ethernet 4/1/14
+show mac-address ethernet 4/1/14
+show vlan ethernet 4/1/15
+show mac-address ethernet 4/1/15
+show vlan ethernet 4/1/16
+show mac-address ethernet 4/1/16
+show vlan ethernet 4/1/17
+show mac-address ethernet 4/1/17
+show vlan ethernet 4/1/18
+show mac-address ethernet 4/1/18
+show vlan ethernet 4/1/19
+show mac-address ethernet 4/1/19
+show vlan ethernet 4/1/20
+show mac-address ethernet 4/1/20
+!
+! --- CHANGE ---
+configure terminal
+vlan 100
+ no untagged ethernet 1/1/6
+ exit
+vlan 1212
+ no untagged ethernet 2/1/1
+ no untagged ethernet 2/1/2
+ no untagged ethernet 2/1/3
+ no untagged ethernet 2/1/4
+ no untagged ethernet 2/1/5
+ no untagged ethernet 2/1/6
+ no untagged ethernet 2/1/7
+ exit
+vlan 1240
+ no untagged ethernet 3/1/37
+ no untagged ethernet 3/1/44
+ no untagged ethernet 3/1/45
+ no untagged ethernet 3/1/46
+ no untagged ethernet 3/1/48
+ no untagged ethernet 4/1/1
+ no untagged ethernet 4/1/7
+ no untagged ethernet 4/1/8
+ no untagged ethernet 4/1/9
+ no untagged ethernet 4/1/10
+ no untagged ethernet 4/1/11
+ no untagged ethernet 4/1/12
+ no untagged ethernet 4/1/15
+ no untagged ethernet 4/1/16
+ no untagged ethernet 4/1/17
+ no untagged ethernet 4/1/18
+ no untagged ethernet 4/1/19
+ no untagged ethernet 4/1/20
+ exit
+vlan 2010 name VL-wifimgmt-01 by port
+ untagged ethernet 1/1/6
+ exit
+vlan 2100
+ untagged ethernet 3/1/44
+ untagged ethernet 3/1/45
+ untagged ethernet 3/1/46
+ untagged ethernet 3/1/47
+ untagged ethernet 3/1/48
+ untagged ethernet 4/1/1
+ untagged ethernet 4/1/5
+ untagged ethernet 4/1/6
+ untagged ethernet 4/1/7
+ untagged ethernet 4/1/8
+ untagged ethernet 4/1/9
+ untagged ethernet 4/1/10
+ untagged ethernet 4/1/11
+ untagged ethernet 4/1/12
+ untagged ethernet 4/1/13
+ untagged ethernet 4/1/14
+ untagged ethernet 4/1/15
+ untagged ethernet 4/1/16
+ untagged ethernet 4/1/17
+ untagged ethernet 4/1/18
+ untagged ethernet 4/1/19
+ untagged ethernet 4/1/20
+ exit
+vlan 2600 name VL-cctv-01 by port
+ untagged ethernet 2/1/1
+ untagged ethernet 2/1/2
+ untagged ethernet 2/1/3
+ untagged ethernet 2/1/4
+ untagged ethernet 2/1/5
+ untagged ethernet 2/1/6
+ untagged ethernet 2/1/7
+ exit
+vlan 2800 name VL-print-01 by port
+ untagged ethernet 3/1/37
+ exit
+end
+!
+! --- PORT BOUNCE ---
+! PoE ports: power off (the devices shut down)
+configure terminal
+interface ethernet 1/1/6
+ no inline power
+ exit
+interface ethernet 2/1/1
+ no inline power
+ exit
+interface ethernet 2/1/2
+ no inline power
+ exit
+interface ethernet 2/1/3
+ no inline power
+ exit
+interface ethernet 2/1/4
+ no inline power
+ exit
+interface ethernet 2/1/5
+ no inline power
+ exit
+interface ethernet 2/1/6
+ no inline power
+ exit
+interface ethernet 2/1/7
+ no inline power
+ exit
+end
+! Wait 10 seconds, then power the PoE ports back on (the devices reboot)
+configure terminal
+interface ethernet 1/1/6
+ inline power
+ exit
+interface ethernet 2/1/1
+ inline power
+ exit
+interface ethernet 2/1/2
+ inline power
+ exit
+interface ethernet 2/1/3
+ inline power
+ exit
+interface ethernet 2/1/4
+ inline power
+ exit
+interface ethernet 2/1/5
+ inline power
+ exit
+interface ethernet 2/1/6
+ inline power
+ exit
+interface ethernet 2/1/7
+ inline power
+ exit
+end
+! Non-PoE ports: link bounce so DHCP devices renew
+configure terminal
+interface ethernet 3/1/37
+ disable
+ enable
+ exit
+interface ethernet 3/1/44
+ disable
+ enable
+ exit
+interface ethernet 3/1/45
+ disable
+ enable
+ exit
+interface ethernet 3/1/46
+ disable
+ enable
+ exit
+interface ethernet 3/1/47
+ disable
+ enable
+ exit
+interface ethernet 3/1/48
+ disable
+ enable
+ exit
+interface ethernet 4/1/1
+ disable
+ enable
+ exit
+interface ethernet 4/1/5
+ disable
+ enable
+ exit
+interface ethernet 4/1/6
+ disable
+ enable
+ exit
+interface ethernet 4/1/7
+ disable
+ enable
+ exit
+interface ethernet 4/1/8
+ disable
+ enable
+ exit
+interface ethernet 4/1/9
+ disable
+ enable
+ exit
+interface ethernet 4/1/10
+ disable
+ enable
+ exit
+interface ethernet 4/1/11
+ disable
+ enable
+ exit
+interface ethernet 4/1/12
+ disable
+ enable
+ exit
+interface ethernet 4/1/13
+ disable
+ enable
+ exit
+interface ethernet 4/1/14
+ disable
+ enable
+ exit
+interface ethernet 4/1/15
+ disable
+ enable
+ exit
+interface ethernet 4/1/16
+ disable
+ enable
+ exit
+interface ethernet 4/1/17
+ disable
+ enable
+ exit
+interface ethernet 4/1/18
+ disable
+ enable
+ exit
+interface ethernet 4/1/19
+ disable
+ enable
+ exit
+interface ethernet 4/1/20
+ disable
+ enable
+ exit
+end
+!
+! --- VERIFY ---
+show vlan 2010
+show vlan 2100
+show vlan 2600
+show vlan 2800
+show vlan ethernet 1/1/6
+show vlan ethernet 2/1/1
+show vlan ethernet 2/1/2
+show vlan ethernet 2/1/3
+show vlan ethernet 2/1/4
+show vlan ethernet 2/1/5
+show vlan ethernet 2/1/6
+show vlan ethernet 2/1/7
+show vlan ethernet 3/1/37
+show vlan ethernet 3/1/44
+show vlan ethernet 3/1/45
+show vlan ethernet 3/1/46
+show vlan ethernet 3/1/47
+show vlan ethernet 3/1/48
+show vlan ethernet 4/1/1
+show vlan ethernet 4/1/5
+show vlan ethernet 4/1/6
+show vlan ethernet 4/1/7
+show vlan ethernet 4/1/8
+show vlan ethernet 4/1/9
+show vlan ethernet 4/1/10
+show vlan ethernet 4/1/11
+show vlan ethernet 4/1/12
+show vlan ethernet 4/1/13
+show vlan ethernet 4/1/14
+show vlan ethernet 4/1/15
+show vlan ethernet 4/1/16
+show vlan ethernet 4/1/17
+show vlan ethernet 4/1/18
+show vlan ethernet 4/1/19
+show vlan ethernet 4/1/20
+show mac-address vlan 2010
+show mac-address vlan 2100
+show mac-address vlan 2600
+show mac-address vlan 2800
+! When all devices are confirmed on the new VLAN:
+write memory
+!
+! --- ROLLBACK ---
+configure terminal
+vlan 2010
+ no untagged ethernet 1/1/6
+ exit
+vlan 2100
+ no untagged ethernet 3/1/44
+ no untagged ethernet 3/1/45
+ no untagged ethernet 3/1/46
+ no untagged ethernet 3/1/47
+ no untagged ethernet 3/1/48
+ no untagged ethernet 4/1/1
+ no untagged ethernet 4/1/5
+ no untagged ethernet 4/1/6
+ no untagged ethernet 4/1/7
+ no untagged ethernet 4/1/8
+ no untagged ethernet 4/1/9
+ no untagged ethernet 4/1/10
+ no untagged ethernet 4/1/11
+ no untagged ethernet 4/1/12
+ no untagged ethernet 4/1/13
+ no untagged ethernet 4/1/14
+ no untagged ethernet 4/1/15
+ no untagged ethernet 4/1/16
+ no untagged ethernet 4/1/17
+ no untagged ethernet 4/1/18
+ no untagged ethernet 4/1/19
+ no untagged ethernet 4/1/20
+ exit
+vlan 2600
+ no untagged ethernet 2/1/1
+ no untagged ethernet 2/1/2
+ no untagged ethernet 2/1/3
+ no untagged ethernet 2/1/4
+ no untagged ethernet 2/1/5
+ no untagged ethernet 2/1/6
+ no untagged ethernet 2/1/7
+ exit
+vlan 2800
+ no untagged ethernet 3/1/37
+ exit
+vlan 100
+ untagged ethernet 1/1/6
+ exit
+vlan 1212
+ untagged ethernet 2/1/1
+ untagged ethernet 2/1/2
+ untagged ethernet 2/1/3
+ untagged ethernet 2/1/4
+ untagged ethernet 2/1/5
+ untagged ethernet 2/1/6
+ untagged ethernet 2/1/7
+ exit
+vlan 1240
+ untagged ethernet 3/1/37
+ untagged ethernet 3/1/44
+ untagged ethernet 3/1/45
+ untagged ethernet 3/1/46
+ untagged ethernet 3/1/48
+ untagged ethernet 4/1/1
+ untagged ethernet 4/1/7
+ untagged ethernet 4/1/8
+ untagged ethernet 4/1/9
+ untagged ethernet 4/1/10
+ untagged ethernet 4/1/11
+ untagged ethernet 4/1/12
+ untagged ethernet 4/1/15
+ untagged ethernet 4/1/16
+ untagged ethernet 4/1/17
+ untagged ethernet 4/1/18
+ untagged ethernet 4/1/19
+ untagged ethernet 4/1/20
+ exit
+end
+!
+! --- ROLLBACK PORT BOUNCE ---
+! PoE ports: power off (the devices shut down)
+configure terminal
+interface ethernet 1/1/6
+ no inline power
+ exit
+interface ethernet 2/1/1
+ no inline power
+ exit
+interface ethernet 2/1/2
+ no inline power
+ exit
+interface ethernet 2/1/3
+ no inline power
+ exit
+interface ethernet 2/1/4
+ no inline power
+ exit
+interface ethernet 2/1/5
+ no inline power
+ exit
+interface ethernet 2/1/6
+ no inline power
+ exit
+interface ethernet 2/1/7
+ no inline power
+ exit
+end
+! Wait 10 seconds, then power the PoE ports back on (the devices reboot)
+configure terminal
+interface ethernet 1/1/6
+ inline power
+ exit
+interface ethernet 2/1/1
+ inline power
+ exit
+interface ethernet 2/1/2
+ inline power
+ exit
+interface ethernet 2/1/3
+ inline power
+ exit
+interface ethernet 2/1/4
+ inline power
+ exit
+interface ethernet 2/1/5
+ inline power
+ exit
+interface ethernet 2/1/6
+ inline power
+ exit
+interface ethernet 2/1/7
+ inline power
+ exit
+end
+! Non-PoE ports: link bounce so DHCP devices renew
+configure terminal
+interface ethernet 3/1/37
+ disable
+ enable
+ exit
+interface ethernet 3/1/44
+ disable
+ enable
+ exit
+interface ethernet 3/1/45
+ disable
+ enable
+ exit
+interface ethernet 3/1/46
+ disable
+ enable
+ exit
+interface ethernet 3/1/47
+ disable
+ enable
+ exit
+interface ethernet 3/1/48
+ disable
+ enable
+ exit
+interface ethernet 4/1/1
+ disable
+ enable
+ exit
+interface ethernet 4/1/5
+ disable
+ enable
+ exit
+interface ethernet 4/1/6
+ disable
+ enable
+ exit
+interface ethernet 4/1/7
+ disable
+ enable
+ exit
+interface ethernet 4/1/8
+ disable
+ enable
+ exit
+interface ethernet 4/1/9
+ disable
+ enable
+ exit
+interface ethernet 4/1/10
+ disable
+ enable
+ exit
+interface ethernet 4/1/11
+ disable
+ enable
+ exit
+interface ethernet 4/1/12
+ disable
+ enable
+ exit
+interface ethernet 4/1/13
+ disable
+ enable
+ exit
+interface ethernet 4/1/14
+ disable
+ enable
+ exit
+interface ethernet 4/1/15
+ disable
+ enable
+ exit
+interface ethernet 4/1/16
+ disable
+ enable
+ exit
+interface ethernet 4/1/17
+ disable
+ enable
+ exit
+interface ethernet 4/1/18
+ disable
+ enable
+ exit
+interface ethernet 4/1/19
+ disable
+ enable
+ exit
+interface ethernet 4/1/20
+ disable
+ enable
+ exit
+end
+write memory
+!
+
+!==============================================================================
+! switch-200V-stack-lv4  (21 ports, 21 devices)
+!==============================================================================
+!
+! --- Port list ---
+! Port       Old -> New   MAC (ICX)       New IP         Device
+! 1/1/38    1230 -> 2700  c442.686d.3008  10.21.36.151   AV: Touch Panel (4.12 Multipurpose Room)
+! 1/1/42    1230 -> 2700  c442.6859.eb95  10.21.36.82    AV: Keypad for Room-In-Use light (4.01 Open Collaboration)
+! 2/1/1     1212 -> 2600  0002.d1ae.d700  10.21.25.26    cctv: cam-200v-ae-d7-00
+! 2/1/2     1212 -> 2600  0002.d1ae.d709  10.21.25.27    cctv: cam-200v-ae-d7-09
+! 2/1/3     1212 -> 2600  0002.d1ae.d6ff  10.21.25.19    cctv: cam-200v-AE-D6-FF
+! 2/1/4     1212 -> 2600  0002.d1ae.d6f6  10.21.25.18    cctv: cam-200v-AE-D6-F6
+! 2/1/5     1212 -> 2600  0002.d1ae.d6f5  10.21.25.20    cctv: cam-200v-AE-D6-F5
+! 2/1/6     1212 -> 2600  0002.d1ae.d6f9  10.21.25.24    cctv: cam-200v-AE-D6-F9
+! 2/1/7     1212 -> 2600  0002.d1ae.d6f8  10.21.25.23    cctv: cam-200v-AE-D6-F8
+! 2/1/15    1230 -> 2700  8034.2814.460c  10.21.36.149   AV: Projector Screen (4.12 Multipurpose Room)
+! 2/1/29    1230 -> 2700  c442.6865.38d6  10.21.36.144   AV: AV Switcher (4.12 Multipurpose Room)
+! 2/1/38    1230 -> 2700  c442.6865.5a42  10.21.36.146   AV: Occupancy Sensor (4.12 Multipurpose Room)
+! 2/1/39    1230 -> 2700  b8a4.4fce.ebe4  10.21.36.150   AV: Room Camera (4.12 Multipurpose Room)
+! 4/1/11    1230 -> 2700  28b5.e86f.4fda  10.21.36.147   AV: PDU (4.12 Multipurpose Room)
+! 4/1/12    1230 -> 2700  74c1.7e33.037a  10.21.36.145   AV: LCD (4.12 Multipurpose Room)
+! 4/1/15    1230 -> 2700  381a.52b2.00b8  10.21.36.148   AV: Projector Left (4.12 Multipurpose Room)
+! 5/1/30    1230 -> 2700  f801.b453.869a  10.21.36.83    AV: LCD (4.01 Open Collaboration)
+! 5/1/33    1272 -> 2700  384b.76f1.a173  10.21.36.81    AV: Airtame (4.01 Open Collaboration)
+! 5/1/44    1272 -> 2700  384b.76f1.9543  10.21.36.142   AV: Airtame (4.12 Multipurpose Room)
+! 5/1/45    1230 -> 2700  001b.6639.9395  10.21.36.152   AV: Wireless Mic Receiver (4.12 Multipurpose Room)
+! 5/1/46    1272 -> 2700  384b.76f1.92d2  10.21.36.143   AV: Airtame (4.12 Multipurpose Room)
+!
+! --- PRE-CHECKS (run in exec mode, compare with list above) ---
+show vlan 2600
+show vlan 2700
+show vlan ethernet 1/1/38
+show mac-address ethernet 1/1/38
+show vlan ethernet 1/1/42
+show mac-address ethernet 1/1/42
+show vlan ethernet 2/1/1
+show mac-address ethernet 2/1/1
+show vlan ethernet 2/1/2
+show mac-address ethernet 2/1/2
+show vlan ethernet 2/1/3
+show mac-address ethernet 2/1/3
+show vlan ethernet 2/1/4
+show mac-address ethernet 2/1/4
+show vlan ethernet 2/1/5
+show mac-address ethernet 2/1/5
+show vlan ethernet 2/1/6
+show mac-address ethernet 2/1/6
+show vlan ethernet 2/1/7
+show mac-address ethernet 2/1/7
+show vlan ethernet 2/1/15
+show mac-address ethernet 2/1/15
+show vlan ethernet 2/1/29
+show mac-address ethernet 2/1/29
+show vlan ethernet 2/1/38
+show mac-address ethernet 2/1/38
+show vlan ethernet 2/1/39
+show mac-address ethernet 2/1/39
+show vlan ethernet 4/1/11
+show mac-address ethernet 4/1/11
+show vlan ethernet 4/1/12
+show mac-address ethernet 4/1/12
+show vlan ethernet 4/1/15
+show mac-address ethernet 4/1/15
+show vlan ethernet 5/1/30
+show mac-address ethernet 5/1/30
+show vlan ethernet 5/1/33
+show mac-address ethernet 5/1/33
+show vlan ethernet 5/1/44
+show mac-address ethernet 5/1/44
+show vlan ethernet 5/1/45
+show mac-address ethernet 5/1/45
+show vlan ethernet 5/1/46
+show mac-address ethernet 5/1/46
+!
+! --- CHANGE ---
+configure terminal
+vlan 1212
+ no untagged ethernet 2/1/1
+ no untagged ethernet 2/1/2
+ no untagged ethernet 2/1/3
+ no untagged ethernet 2/1/4
+ no untagged ethernet 2/1/5
+ no untagged ethernet 2/1/6
+ no untagged ethernet 2/1/7
+ exit
+vlan 1230
+ no untagged ethernet 1/1/38
+ no untagged ethernet 1/1/42
+ no untagged ethernet 2/1/15
+ no untagged ethernet 2/1/29
+ no untagged ethernet 2/1/38
+ no untagged ethernet 2/1/39
+ no untagged ethernet 4/1/11
+ no untagged ethernet 4/1/12
+ no untagged ethernet 4/1/15
+ no untagged ethernet 5/1/30
+ no untagged ethernet 5/1/45
+ exit
+vlan 1272
+ no untagged ethernet 5/1/33
+ no untagged ethernet 5/1/44
+ no untagged ethernet 5/1/46
+ exit
+vlan 2600 name VL-cctv-01 by port
+ untagged ethernet 2/1/1
+ untagged ethernet 2/1/2
+ untagged ethernet 2/1/3
+ untagged ethernet 2/1/4
+ untagged ethernet 2/1/5
+ untagged ethernet 2/1/6
+ untagged ethernet 2/1/7
+ exit
+vlan 2700 name VL-av-01 by port
+ untagged ethernet 1/1/38
+ untagged ethernet 1/1/42
+ untagged ethernet 2/1/15
+ untagged ethernet 2/1/29
+ untagged ethernet 2/1/38
+ untagged ethernet 2/1/39
+ untagged ethernet 4/1/11
+ untagged ethernet 4/1/12
+ untagged ethernet 4/1/15
+ untagged ethernet 5/1/30
+ untagged ethernet 5/1/33
+ untagged ethernet 5/1/44
+ untagged ethernet 5/1/45
+ untagged ethernet 5/1/46
+ exit
+end
+!
+! --- PORT BOUNCE ---
+! PoE units on this stack are not confirmed, so every port gets a link bounce.
+! A link bounce does not cut PoE power. To power-cycle a PoE device:
+!   interface ethernet <port>  /  no inline power  /  (wait 10 s)  /  inline power
+! All ports: link bounce so DHCP devices renew
+configure terminal
+interface ethernet 1/1/38
+ disable
+ enable
+ exit
+interface ethernet 1/1/42
+ disable
+ enable
+ exit
+interface ethernet 2/1/1
+ disable
+ enable
+ exit
+interface ethernet 2/1/2
+ disable
+ enable
+ exit
+interface ethernet 2/1/3
+ disable
+ enable
+ exit
+interface ethernet 2/1/4
+ disable
+ enable
+ exit
+interface ethernet 2/1/5
+ disable
+ enable
+ exit
+interface ethernet 2/1/6
+ disable
+ enable
+ exit
+interface ethernet 2/1/7
+ disable
+ enable
+ exit
+interface ethernet 2/1/15
+ disable
+ enable
+ exit
+interface ethernet 2/1/29
+ disable
+ enable
+ exit
+interface ethernet 2/1/38
+ disable
+ enable
+ exit
+interface ethernet 2/1/39
+ disable
+ enable
+ exit
+interface ethernet 4/1/11
+ disable
+ enable
+ exit
+interface ethernet 4/1/12
+ disable
+ enable
+ exit
+interface ethernet 4/1/15
+ disable
+ enable
+ exit
+interface ethernet 5/1/30
+ disable
+ enable
+ exit
+interface ethernet 5/1/33
+ disable
+ enable
+ exit
+interface ethernet 5/1/44
+ disable
+ enable
+ exit
+interface ethernet 5/1/45
+ disable
+ enable
+ exit
+interface ethernet 5/1/46
+ disable
+ enable
+ exit
+end
+!
+! --- VERIFY ---
+show vlan 2600
+show vlan 2700
+show vlan ethernet 1/1/38
+show vlan ethernet 1/1/42
+show vlan ethernet 2/1/1
+show vlan ethernet 2/1/2
+show vlan ethernet 2/1/3
+show vlan ethernet 2/1/4
+show vlan ethernet 2/1/5
+show vlan ethernet 2/1/6
+show vlan ethernet 2/1/7
+show vlan ethernet 2/1/15
+show vlan ethernet 2/1/29
+show vlan ethernet 2/1/38
+show vlan ethernet 2/1/39
+show vlan ethernet 4/1/11
+show vlan ethernet 4/1/12
+show vlan ethernet 4/1/15
+show vlan ethernet 5/1/30
+show vlan ethernet 5/1/33
+show vlan ethernet 5/1/44
+show vlan ethernet 5/1/45
+show vlan ethernet 5/1/46
+show mac-address vlan 2600
+show mac-address vlan 2700
+! When all devices are confirmed on the new VLAN:
+write memory
+!
+! --- ROLLBACK ---
+configure terminal
+vlan 2600
+ no untagged ethernet 2/1/1
+ no untagged ethernet 2/1/2
+ no untagged ethernet 2/1/3
+ no untagged ethernet 2/1/4
+ no untagged ethernet 2/1/5
+ no untagged ethernet 2/1/6
+ no untagged ethernet 2/1/7
+ exit
+vlan 2700
+ no untagged ethernet 1/1/38
+ no untagged ethernet 1/1/42
+ no untagged ethernet 2/1/15
+ no untagged ethernet 2/1/29
+ no untagged ethernet 2/1/38
+ no untagged ethernet 2/1/39
+ no untagged ethernet 4/1/11
+ no untagged ethernet 4/1/12
+ no untagged ethernet 4/1/15
+ no untagged ethernet 5/1/30
+ no untagged ethernet 5/1/33
+ no untagged ethernet 5/1/44
+ no untagged ethernet 5/1/45
+ no untagged ethernet 5/1/46
+ exit
+vlan 1212
+ untagged ethernet 2/1/1
+ untagged ethernet 2/1/2
+ untagged ethernet 2/1/3
+ untagged ethernet 2/1/4
+ untagged ethernet 2/1/5
+ untagged ethernet 2/1/6
+ untagged ethernet 2/1/7
+ exit
+vlan 1230
+ untagged ethernet 1/1/38
+ untagged ethernet 1/1/42
+ untagged ethernet 2/1/15
+ untagged ethernet 2/1/29
+ untagged ethernet 2/1/38
+ untagged ethernet 2/1/39
+ untagged ethernet 4/1/11
+ untagged ethernet 4/1/12
+ untagged ethernet 4/1/15
+ untagged ethernet 5/1/30
+ untagged ethernet 5/1/45
+ exit
+vlan 1272
+ untagged ethernet 5/1/33
+ untagged ethernet 5/1/44
+ untagged ethernet 5/1/46
+ exit
+end
+!
+! --- ROLLBACK PORT BOUNCE ---
+! PoE units on this stack are not confirmed, so every port gets a link bounce.
+! A link bounce does not cut PoE power. To power-cycle a PoE device:
+!   interface ethernet <port>  /  no inline power  /  (wait 10 s)  /  inline power
+! All ports: link bounce so DHCP devices renew
+configure terminal
+interface ethernet 1/1/38
+ disable
+ enable
+ exit
+interface ethernet 1/1/42
+ disable
+ enable
+ exit
+interface ethernet 2/1/1
+ disable
+ enable
+ exit
+interface ethernet 2/1/2
+ disable
+ enable
+ exit
+interface ethernet 2/1/3
+ disable
+ enable
+ exit
+interface ethernet 2/1/4
+ disable
+ enable
+ exit
+interface ethernet 2/1/5
+ disable
+ enable
+ exit
+interface ethernet 2/1/6
+ disable
+ enable
+ exit
+interface ethernet 2/1/7
+ disable
+ enable
+ exit
+interface ethernet 2/1/15
+ disable
+ enable
+ exit
+interface ethernet 2/1/29
+ disable
+ enable
+ exit
+interface ethernet 2/1/38
+ disable
+ enable
+ exit
+interface ethernet 2/1/39
+ disable
+ enable
+ exit
+interface ethernet 4/1/11
+ disable
+ enable
+ exit
+interface ethernet 4/1/12
+ disable
+ enable
+ exit
+interface ethernet 4/1/15
+ disable
+ enable
+ exit
+interface ethernet 5/1/30
+ disable
+ enable
+ exit
+interface ethernet 5/1/33
+ disable
+ enable
+ exit
+interface ethernet 5/1/44
+ disable
+ enable
+ exit
+interface ethernet 5/1/45
+ disable
+ enable
+ exit
+interface ethernet 5/1/46
+ disable
+ enable
+ exit
+end
+write memory
+!
+
+!==============================================================================
+! switch-200V-stack-lv6  (8 ports, 9 devices)
+!==============================================================================
+!
+! --- Port list ---
+! Port       Old -> New   MAC (ICX)       New IP         Device
+! 1/1/19     100 -> 2010  c8a6.0839.4bf0  10.21.1.37     AP: r650-39-4b-f0
+! 2/1/29    1240 -> 2700  4821.0b56.abf9  10.21.37.13    AV: Room NUC (5.11)
+! 2/1/30    1230 -> 2700  001d.560a.dfba  10.21.36.253   AV: AV Switcher (5.11)  <-- shared port
+! 2/1/30    1230 -> 2700  b880.4f28.19f6  10.21.37.10    AV: PDU (5.11)  <-- shared port
+! 2/1/32    1230 -> 2700  b898.b00f.1c5d  10.21.36.254   AV: Occupancy Sensor (5.11)
+! 2/1/33    1230 -> 2700  b8a4.4f49.4a9b  10.21.37.12    AV: Room Camera (5.11)
+! 2/1/34    1230 -> 2700  c442.6815.2de5  10.21.37.14    AV: Touch Panel (5.11)
+! 6/1/35    1272 -> 2700  384b.76f1.901d  10.21.36.252   AV: Airtame (5.11)
+! 6/1/41    1230 -> 2700  f825.51cb.8c9a  10.21.37.11    AV: Projector (5.11)
+!
+! --- PRE-CHECKS (run in exec mode, compare with list above) ---
+show vlan 2010
+show vlan 2700
+show vlan ethernet 1/1/19
+show mac-address ethernet 1/1/19
+show vlan ethernet 2/1/29
+show mac-address ethernet 2/1/29
+show vlan ethernet 2/1/30
+show mac-address ethernet 2/1/30
+show vlan ethernet 2/1/32
+show mac-address ethernet 2/1/32
+show vlan ethernet 2/1/33
+show mac-address ethernet 2/1/33
+show vlan ethernet 2/1/34
+show mac-address ethernet 2/1/34
+show vlan ethernet 6/1/35
+show mac-address ethernet 6/1/35
+show vlan ethernet 6/1/41
+show mac-address ethernet 6/1/41
+!
+! --- CHANGE ---
+configure terminal
+vlan 100
+ no untagged ethernet 1/1/19
+ exit
+vlan 1230
+ no untagged ethernet 2/1/30
+ no untagged ethernet 2/1/32
+ no untagged ethernet 2/1/33
+ no untagged ethernet 2/1/34
+ no untagged ethernet 6/1/41
+ exit
+vlan 1240
+ no untagged ethernet 2/1/29
+ exit
+vlan 1272
+ no untagged ethernet 6/1/35
+ exit
+vlan 2010 name VL-wifimgmt-01 by port
+ untagged ethernet 1/1/19
+ exit
+vlan 2700 name VL-av-01 by port
+ untagged ethernet 2/1/29
+ untagged ethernet 2/1/30
+ untagged ethernet 2/1/32
+ untagged ethernet 2/1/33
+ untagged ethernet 2/1/34
+ untagged ethernet 6/1/35
+ untagged ethernet 6/1/41
+ exit
+end
+!
+! --- PORT BOUNCE ---
+! PoE units on this stack are not confirmed, so every port gets a link bounce.
+! A link bounce does not cut PoE power. To power-cycle a PoE device:
+!   interface ethernet <port>  /  no inline power  /  (wait 10 s)  /  inline power
+! All ports: link bounce so DHCP devices renew
+configure terminal
+interface ethernet 1/1/19
+ disable
+ enable
+ exit
+interface ethernet 2/1/29
+ disable
+ enable
+ exit
+interface ethernet 2/1/30
+ disable
+ enable
+ exit
+interface ethernet 2/1/32
+ disable
+ enable
+ exit
+interface ethernet 2/1/33
+ disable
+ enable
+ exit
+interface ethernet 2/1/34
+ disable
+ enable
+ exit
+interface ethernet 6/1/35
+ disable
+ enable
+ exit
+interface ethernet 6/1/41
+ disable
+ enable
+ exit
+end
+!
+! --- VERIFY ---
+show vlan 2010
+show vlan 2700
+show vlan ethernet 1/1/19
+show vlan ethernet 2/1/29
+show vlan ethernet 2/1/30
+show vlan ethernet 2/1/32
+show vlan ethernet 2/1/33
+show vlan ethernet 2/1/34
+show vlan ethernet 6/1/35
+show vlan ethernet 6/1/41
+show mac-address vlan 2010
+show mac-address vlan 2700
+! When all devices are confirmed on the new VLAN:
+write memory
+!
+! --- ROLLBACK ---
+configure terminal
+vlan 2010
+ no untagged ethernet 1/1/19
+ exit
+vlan 2700
+ no untagged ethernet 2/1/29
+ no untagged ethernet 2/1/30
+ no untagged ethernet 2/1/32
+ no untagged ethernet 2/1/33
+ no untagged ethernet 2/1/34
+ no untagged ethernet 6/1/35
+ no untagged ethernet 6/1/41
+ exit
+vlan 100
+ untagged ethernet 1/1/19
+ exit
+vlan 1230
+ untagged ethernet 2/1/30
+ untagged ethernet 2/1/32
+ untagged ethernet 2/1/33
+ untagged ethernet 2/1/34
+ untagged ethernet 6/1/41
+ exit
+vlan 1240
+ untagged ethernet 2/1/29
+ exit
+vlan 1272
+ untagged ethernet 6/1/35
+ exit
+end
+!
+! --- ROLLBACK PORT BOUNCE ---
+! PoE units on this stack are not confirmed, so every port gets a link bounce.
+! A link bounce does not cut PoE power. To power-cycle a PoE device:
+!   interface ethernet <port>  /  no inline power  /  (wait 10 s)  /  inline power
+! All ports: link bounce so DHCP devices renew
+configure terminal
+interface ethernet 1/1/19
+ disable
+ enable
+ exit
+interface ethernet 2/1/29
+ disable
+ enable
+ exit
+interface ethernet 2/1/30
+ disable
+ enable
+ exit
+interface ethernet 2/1/32
+ disable
+ enable
+ exit
+interface ethernet 2/1/33
+ disable
+ enable
+ exit
+interface ethernet 2/1/34
+ disable
+ enable
+ exit
+interface ethernet 6/1/35
+ disable
+ enable
+ exit
+interface ethernet 6/1/41
+ disable
+ enable
+ exit
+end
+write memory
+!
