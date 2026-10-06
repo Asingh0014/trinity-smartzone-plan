@@ -45,6 +45,11 @@
 !   - Ports marked '*' in the port lists had their port taken from the 200V MAC
 !     tab, not the master list (Review section 1). Confirm in the pre-check
 !
+! Wi-Fi: the 200V APs move to the new SSIDs in SmartZone. Trinity Wireless uses
+!   VLAN 2300, already tagged on the AP ports. Trinity Visitor and eduroam use
+!   VLAN 2900, which is not, so each switch with APs has an 'AP PORTS: ADD VLAN
+!   2900' block (lv3, lv4, lv6, LT2-1; 40 ports). It only adds tagging: no impact.
+!
 ! Order: one switch at a time, LT2-1 first (smallest), then lv3, lv4, lv6,
 ! then Tutorial-6.03. Per switch: PRE-CHECK > CHANGE > PORT BOUNCE > VERIFY >
 ! write memory. If a switch fails verification, run its ROLLBACK before the next.
@@ -91,6 +96,21 @@ show mac-address vlan 1272
 show interfaces brief
 ! Copy the running config off the switch before changing it:
 ! copy running-config tftp <server> switch-200V-LT2-1-pre-cutover.cfg
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 AP PORTS: ADD VLAN 2900 (Wi-Fi, Trinity Visitor and eduroam)
+!-----------------------------------------------------------------------------
+! Adds tagging only; the AP ports keep their untagged VLAN and other tagged VLANs
+show vlan 2900
+configure terminal
+vlan 2900
+ tagged ethernet 1/1/1
+ exit
+end
+show vlan 2900
+! Expect 1/1/1 listed as tagged in VLAN 2900
+! Rollback for this block only:
+!   configure terminal / vlan 2900 / no tagged ethernet 1/1/1 / end
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-LT2-1 CHANGE
@@ -348,6 +368,21 @@ show mac-address vlan 1272
 show interfaces brief
 ! Copy the running config off the switch before changing it:
 ! copy running-config tftp <server> switch-200V-stack-lv3-pre-cutover.cfg
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 AP PORTS: ADD VLAN 2900 (Wi-Fi, Trinity Visitor and eduroam)
+!-----------------------------------------------------------------------------
+! Adds tagging only; the AP ports keep their untagged VLAN and other tagged VLANs
+show vlan 2900
+configure terminal
+vlan 2900
+ tagged ethernet 1/1/1 to 1/1/11
+ exit
+end
+show vlan 2900
+! Expect 1/1/1 to 1/1/11 listed as tagged in VLAN 2900
+! Rollback for this block only:
+!   configure terminal / vlan 2900 / no tagged ethernet 1/1/1 to 1/1/11 / end
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-stack-lv3 CHANGE
@@ -1069,6 +1104,21 @@ show mac-address vlan 1272
 show interfaces brief
 ! Copy the running config off the switch before changing it:
 ! copy running-config tftp <server> switch-200V-stack-lv4-pre-cutover.cfg
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 AP PORTS: ADD VLAN 2900 (Wi-Fi, Trinity Visitor and eduroam)
+!-----------------------------------------------------------------------------
+! Adds tagging only; the AP ports keep their untagged VLAN and other tagged VLANs
+show vlan 2900
+configure terminal
+vlan 2900
+ tagged ethernet 1/1/1 to 1/1/11
+ exit
+end
+show vlan 2900
+! Expect 1/1/1 to 1/1/11 listed as tagged in VLAN 2900
+! Rollback for this block only:
+!   configure terminal / vlan 2900 / no tagged ethernet 1/1/1 to 1/1/11 / end
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-stack-lv4 CHANGE
@@ -1974,6 +2024,21 @@ show mac-address vlan 1272
 show interfaces brief
 ! Copy the running config off the switch before changing it:
 ! copy running-config tftp <server> switch-200V-stack-lv6-pre-cutover.cfg
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 AP PORTS: ADD VLAN 2900 (Wi-Fi, Trinity Visitor and eduroam)
+!-----------------------------------------------------------------------------
+! Adds tagging only; the AP ports keep their untagged VLAN and other tagged VLANs
+show vlan 2900
+configure terminal
+vlan 2900
+ tagged ethernet 1/1/13 to 1/1/29
+ exit
+end
+show vlan 2900
+! Expect 1/1/13 to 1/1/29 listed as tagged in VLAN 2900
+! Rollback for this block only:
+!   configure terminal / vlan 2900 / no tagged ethernet 1/1/13 to 1/1/29 / end
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-stack-lv6 CHANGE
