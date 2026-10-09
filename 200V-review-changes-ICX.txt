@@ -1,0 +1,540 @@
+!=============================================================================
+! 200V VLAN migration - Review tab changes (ports with no listed device)
+! Ruckus ICX, FastIron 10.0.10g
+! Source: 200V_Device_Port_List_6_10_dycom.xlsx, Review tab, Comments column
+!=============================================================================
+!
+! Scope: untagged VLAN on 20 access ports across 4 switches
+!   switch-200V-LT2-3           192.168.122.14      1 ports
+!   switch-200V-stack-lv3       192.168.122.22      8 ports
+!   switch-200V-stack-lv4       192.168.122.21      3 ports
+!   switch-200V-stack-lv6       192.168.122.11      8 ports
+!
+! VLAN mapping (from the Review comments)
+!   1240 (200V_staff ) -> 2100 (VL-staff-wired-01)  16 ports
+!    100 (management ) -> 2000 (VL-netmgmt-01    )   2 ports
+!    230 (Library    ) -> 2530 (VL-library-01    )   2 ports
+!
+! Not in this file
+!   - Review section 4 (items 63-72): 'GC - leave the VLAN as they are'
+!   - Review section 3 items with no target VLAN in the Comments column
+!     (21, 22, 24, 26, 27, 35-42, 44, 47-53, 62): still to be identified
+!   - Review section 1 (items 1-14): already moved in the 9 Oct cutover
+!
+! Before starting
+!   - VLANs 2000, 2100 and 2530 already exist on every switch here and are
+!     tagged on its uplink (lag 10 on lv3/lv4/lv6; 1/1/12 on LT2-3, carried
+!     through LT2-1 1/1/24). The core has ve 2000 (10.21.0.0/24), ve 2100
+!     (10.21.3.0/24) and ve 2530 (10.21.24.0/24) with DHCP helpers
+!   - Trinity to confirm DHCP on 10.21.3.0/24 (staff), 10.21.24.0/24 (library)
+!     and 10.21.0.0/24 (netmgmt)
+!   - lv3 1/1/48 and lv4 1/1/48 (MACs 00:09:F5, same vendor as the two devices
+!     behind switch-200V-8): move to 2000 only if the device uses DHCP or is
+!     re-addressed into 10.21.0.0/24. With a static 192.168.122.x address it
+!     will be unreachable after the move
+!
+! Same method as the cutover: CHANGE removes the old untagged VLAN first, then
+! adds the new one. Tagged VLANs are not touched (lv6 1/1/31 keeps 1272 and
+! 1273 tagged; LT2-3 1/1/4 keeps 100 tagged). PORT BOUNCE makes DHCP devices
+! renew; it does not remove PoE.
+! Per switch: PRE-CHECK > CHANGE > PORT BOUNCE > VERIFY > write memory.
+!=============================================================================
+
+!=============================================================================
+! switch-200V-LT2-3  (192.168.122.14)  -  1 ports
+!=============================================================================
+!
+! Port list (Review item, old -> new, MAC seen)
+!   1/1/4    1240 -> 2100  item 23  d4a2.cde1.dd0e
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-3 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+show vlan 1240
+show vlan 2100
+show mac-address ethernet 1/1/4
+! Expect each MAC in the port list on its port, on the old VLAN
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-3 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 1240
+ no untagged ethernet 1/1/4
+ exit
+vlan 2100
+ untagged ethernet 1/1/4
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-3 PORT BOUNCE
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/4
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/4
+ enable
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-3 VERIFY
+!-----------------------------------------------------------------------------
+show vlan 2100
+show mac-address ethernet 1/1/4
+! Expect: each port untagged in its new VLAN, and its MAC learned on the new VLAN
+! Then save:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-3 ROLLBACK (only if needed)
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 2100
+ no untagged ethernet 1/1/4
+ exit
+vlan 1240
+ untagged ethernet 1/1/4
+ exit
+end
+! Then run the PORT BOUNCE again and write memory
+
+!=============================================================================
+! switch-200V-stack-lv3  (192.168.122.22)  -  8 ports
+!=============================================================================
+!
+! Port list (Review item, old -> new, MAC seen)
+!   1/1/48    100 -> 2000  item 25  0009.f532.db49
+!   3/1/5    1240 -> 2100  item 28  4cc5.d9d0.8d2a
+!   3/1/29    230 -> 2530  item 29  d83a.ddc6.37a8
+!   3/1/31   1240 -> 2100  item 30  d0c1.b521.b320
+!   3/1/33   1240 -> 2100  item 31  1c1a.dfc2.4523
+!   3/1/43   1240 -> 2100  item 32  1c1a.dfc2.4539
+!   4/1/28   1240 -> 2100  item 33  acb4.80f1.6185
+!   4/1/29    230 -> 2530  item 34  2ccf.67a6.4bde
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+show vlan 100
+show vlan 230
+show vlan 1240
+show vlan 2000
+show vlan 2100
+show vlan 2530
+show mac-address ethernet 1/1/48
+show mac-address ethernet 3/1/5
+show mac-address ethernet 3/1/29
+show mac-address ethernet 3/1/31
+show mac-address ethernet 3/1/33
+show mac-address ethernet 3/1/43
+show mac-address ethernet 4/1/28
+show mac-address ethernet 4/1/29
+! Expect each MAC in the port list on its port, on the old VLAN
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 100
+ no untagged ethernet 1/1/48
+ exit
+vlan 230
+ no untagged ethernet 3/1/29
+ no untagged ethernet 4/1/29
+ exit
+vlan 1240
+ no untagged ethernet 3/1/5
+ no untagged ethernet 3/1/31
+ no untagged ethernet 3/1/33
+ no untagged ethernet 3/1/43
+ no untagged ethernet 4/1/28
+ exit
+vlan 2000
+ untagged ethernet 1/1/48
+ exit
+vlan 2100
+ untagged ethernet 3/1/5
+ untagged ethernet 3/1/31
+ untagged ethernet 3/1/33
+ untagged ethernet 3/1/43
+ untagged ethernet 4/1/28
+ exit
+vlan 2530
+ untagged ethernet 3/1/29
+ untagged ethernet 4/1/29
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 PORT BOUNCE
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/48
+ disable
+ exit
+interface ethernet 3/1/5
+ disable
+ exit
+interface ethernet 3/1/29
+ disable
+ exit
+interface ethernet 3/1/31
+ disable
+ exit
+interface ethernet 3/1/33
+ disable
+ exit
+interface ethernet 3/1/43
+ disable
+ exit
+interface ethernet 4/1/28 to 4/1/29
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/48
+ enable
+ exit
+interface ethernet 3/1/5
+ enable
+ exit
+interface ethernet 3/1/29
+ enable
+ exit
+interface ethernet 3/1/31
+ enable
+ exit
+interface ethernet 3/1/33
+ enable
+ exit
+interface ethernet 3/1/43
+ enable
+ exit
+interface ethernet 4/1/28 to 4/1/29
+ enable
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 VERIFY
+!-----------------------------------------------------------------------------
+show vlan 2000
+show vlan 2100
+show vlan 2530
+show mac-address ethernet 1/1/48
+show mac-address ethernet 3/1/5
+show mac-address ethernet 3/1/29
+show mac-address ethernet 3/1/31
+show mac-address ethernet 3/1/33
+show mac-address ethernet 3/1/43
+show mac-address ethernet 4/1/28
+show mac-address ethernet 4/1/29
+! Expect: each port untagged in its new VLAN, and its MAC learned on the new VLAN
+! Then save:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 ROLLBACK (only if needed)
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 2000
+ no untagged ethernet 1/1/48
+ exit
+vlan 2100
+ no untagged ethernet 3/1/5
+ no untagged ethernet 3/1/31
+ no untagged ethernet 3/1/33
+ no untagged ethernet 3/1/43
+ no untagged ethernet 4/1/28
+ exit
+vlan 2530
+ no untagged ethernet 3/1/29
+ no untagged ethernet 4/1/29
+ exit
+vlan 100
+ untagged ethernet 1/1/48
+ exit
+vlan 230
+ untagged ethernet 3/1/29
+ untagged ethernet 4/1/29
+ exit
+vlan 1240
+ untagged ethernet 3/1/5
+ untagged ethernet 3/1/31
+ untagged ethernet 3/1/33
+ untagged ethernet 3/1/43
+ untagged ethernet 4/1/28
+ exit
+end
+! Then run the PORT BOUNCE again and write memory
+
+!=============================================================================
+! switch-200V-stack-lv4  (192.168.122.21)  -  3 ports
+!=============================================================================
+!
+! Port list (Review item, old -> new, MAC seen)
+!   1/1/48    100 -> 2000  item 43  0009.f532.d9f7
+!   3/1/7    1240 -> 2100  item 45  d4a2.cde4.99ed
+!   3/1/28   1240 -> 2100  item 46  a04a.5ee7.d571
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+show vlan 100
+show vlan 1240
+show vlan 2000
+show vlan 2100
+show mac-address ethernet 1/1/48
+show mac-address ethernet 3/1/7
+show mac-address ethernet 3/1/28
+! Expect each MAC in the port list on its port, on the old VLAN
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 100
+ no untagged ethernet 1/1/48
+ exit
+vlan 1240
+ no untagged ethernet 3/1/7
+ no untagged ethernet 3/1/28
+ exit
+vlan 2000
+ untagged ethernet 1/1/48
+ exit
+vlan 2100
+ untagged ethernet 3/1/7
+ untagged ethernet 3/1/28
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 PORT BOUNCE
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/48
+ disable
+ exit
+interface ethernet 3/1/7
+ disable
+ exit
+interface ethernet 3/1/28
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/48
+ enable
+ exit
+interface ethernet 3/1/7
+ enable
+ exit
+interface ethernet 3/1/28
+ enable
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 VERIFY
+!-----------------------------------------------------------------------------
+show vlan 2000
+show vlan 2100
+show mac-address ethernet 1/1/48
+show mac-address ethernet 3/1/7
+show mac-address ethernet 3/1/28
+! Expect: each port untagged in its new VLAN, and its MAC learned on the new VLAN
+! Then save:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 ROLLBACK (only if needed)
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 2000
+ no untagged ethernet 1/1/48
+ exit
+vlan 2100
+ no untagged ethernet 3/1/7
+ no untagged ethernet 3/1/28
+ exit
+vlan 100
+ untagged ethernet 1/1/48
+ exit
+vlan 1240
+ untagged ethernet 3/1/7
+ untagged ethernet 3/1/28
+ exit
+end
+! Then run the PORT BOUNCE again and write memory
+
+!=============================================================================
+! switch-200V-stack-lv6  (192.168.122.11)  -  8 ports
+!=============================================================================
+!
+! Port list (Review item, old -> new, MAC seen)
+!   1/1/31   1240 -> 2100  item 54  1c1a.dfc2.447a
+!   3/1/1    1240 -> 2100  item 55  a04a.5ee7.d3d5
+!   4/1/1    1240 -> 2100  item 56  1c1a.dfc2.4596
+!   5/1/30   1240 -> 2100  item 57  1c1a.dfc0.98b8
+!   5/1/48   1240 -> 2100  item 58  1c1a.dfc2.4e3c
+!   6/1/16   1240 -> 2100  item 59  1c1a.dfc0.310f
+!   6/1/22   1240 -> 2100  item 60  1c1a.dfc2.5131
+!   6/1/31   1240 -> 2100  item 61  4821.0b56.ae44
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+show vlan 1240
+show vlan 2100
+show mac-address ethernet 1/1/31
+show mac-address ethernet 3/1/1
+show mac-address ethernet 4/1/1
+show mac-address ethernet 5/1/30
+show mac-address ethernet 5/1/48
+show mac-address ethernet 6/1/16
+show mac-address ethernet 6/1/22
+show mac-address ethernet 6/1/31
+! Expect each MAC in the port list on its port, on the old VLAN
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 1240
+ no untagged ethernet 1/1/31
+ no untagged ethernet 3/1/1
+ no untagged ethernet 4/1/1
+ no untagged ethernet 5/1/30
+ no untagged ethernet 5/1/48
+ no untagged ethernet 6/1/16
+ no untagged ethernet 6/1/22
+ no untagged ethernet 6/1/31
+ exit
+vlan 2100
+ untagged ethernet 1/1/31
+ untagged ethernet 3/1/1
+ untagged ethernet 4/1/1
+ untagged ethernet 5/1/30
+ untagged ethernet 5/1/48
+ untagged ethernet 6/1/16
+ untagged ethernet 6/1/22
+ untagged ethernet 6/1/31
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 PORT BOUNCE
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/31
+ disable
+ exit
+interface ethernet 3/1/1
+ disable
+ exit
+interface ethernet 4/1/1
+ disable
+ exit
+interface ethernet 5/1/30
+ disable
+ exit
+interface ethernet 5/1/48
+ disable
+ exit
+interface ethernet 6/1/16
+ disable
+ exit
+interface ethernet 6/1/22
+ disable
+ exit
+interface ethernet 6/1/31
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/31
+ enable
+ exit
+interface ethernet 3/1/1
+ enable
+ exit
+interface ethernet 4/1/1
+ enable
+ exit
+interface ethernet 5/1/30
+ enable
+ exit
+interface ethernet 5/1/48
+ enable
+ exit
+interface ethernet 6/1/16
+ enable
+ exit
+interface ethernet 6/1/22
+ enable
+ exit
+interface ethernet 6/1/31
+ enable
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 VERIFY
+!-----------------------------------------------------------------------------
+show vlan 2100
+show mac-address ethernet 1/1/31
+show mac-address ethernet 3/1/1
+show mac-address ethernet 4/1/1
+show mac-address ethernet 5/1/30
+show mac-address ethernet 5/1/48
+show mac-address ethernet 6/1/16
+show mac-address ethernet 6/1/22
+show mac-address ethernet 6/1/31
+! Expect: each port untagged in its new VLAN, and its MAC learned on the new VLAN
+! Then save:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 ROLLBACK (only if needed)
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 2100
+ no untagged ethernet 1/1/31
+ no untagged ethernet 3/1/1
+ no untagged ethernet 4/1/1
+ no untagged ethernet 5/1/30
+ no untagged ethernet 5/1/48
+ no untagged ethernet 6/1/16
+ no untagged ethernet 6/1/22
+ no untagged ethernet 6/1/31
+ exit
+vlan 1240
+ untagged ethernet 1/1/31
+ untagged ethernet 3/1/1
+ untagged ethernet 4/1/1
+ untagged ethernet 5/1/30
+ untagged ethernet 5/1/48
+ untagged ethernet 6/1/16
+ untagged ethernet 6/1/22
+ untagged ethernet 6/1/31
+ exit
+end
+! Then run the PORT BOUNCE again and write memory
