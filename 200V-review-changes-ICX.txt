@@ -2,6 +2,9 @@
 ! 200V VLAN migration - Review tab changes (ports with no listed device)
 ! Ruckus ICX, FastIron 10.0.10g
 ! Source: 200V_Device_Port_List_6_10_dycom.xlsx, Review tab, Comments column
+! Status: applied 9 Oct 2026 on LT2-3, lv3, lv4 and lv6 (18 ports), saved.
+!   lv3 1/1/48 and lv4 1/1/48 NOT applied: left on VLAN 100 until their
+!   addressing is confirmed (see 'Before starting')
 !=============================================================================
 !
 ! Scope: untagged VLAN on 20 access ports across 4 switches
