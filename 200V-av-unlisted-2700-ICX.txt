@@ -2,6 +2,7 @@
 ! 200V VLAN migration - unlisted AV devices (D8:43:AE:B1) from 1230 to 2700
 ! Ruckus ICX, FastIron 10.0.10g
 ! Source: 200V Device Port List.xlsx, Review tab items 26, 27, 35-42, 44, 47, 50-53
+! Status: applied 9 Oct 2026 on lv3 and lv4 (all 16 ports)
 !=============================================================================
 !
 ! Scope: untagged VLAN on 16 access ports across 2 switches
