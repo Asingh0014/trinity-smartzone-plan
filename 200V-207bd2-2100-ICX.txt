@@ -1,5 +1,5 @@
 !=============================================================================
-! 200V VLAN migration - AV outlets with 20:7B:D2:30 devices, 1230 to 2700
+! 200V VLAN migration - outlets with 20:7B:D2:30 devices, 1230 to 2100
 ! Ruckus ICX, FastIron 10.0.10g
 ! Source: device MAC/outlet list, ports from Switch Physical Patching - Dycom
 !   2025-07-30.xlsx (Level 3 and Level 4 sheets, Type = AV)
@@ -10,27 +10,28 @@
 !   switch-200V-stack-lv4       192.168.122.21      6 ports
 !
 ! VLAN mapping
-!   1230 (200V_av) -> 2700 (VL-av-01)  13 ports
+!   1230 (200V_av) -> 2100 (VL-staff-wired-01)  13 ports
 !
-! Why: 16 AV devices (MACs 20:7B:D2:30:xx:xx) were given with their outlet
-! labels. The patching sheet puts 13 of them on ports still untagged on 1230
-! with no device in the device list, so the cutover left them on the old AV
-! VLAN. The other 3 outlets (200V3J14 lv3 2/1/26, 200V4I17 lv4 1/1/24,
-! 200V4H9 lv4 2/1/24) are on ports already on 2700 and are not in this file.
+! Why: 16 devices (MACs 20:7B:D2:30:xx:xx) were given with their outlet
+! labels, to go on VLAN 2100 (decision 9 Oct). The patching sheet puts 13 on
+! ports still untagged on 1230 with no device in the device list, so the
+! cutover left them there. The other 3 outlets (200V3J14 lv3 2/1/26, 200V4I17
+! lv4 1/1/24, 200V4H9 lv4 2/1/24) are on ports now on 2700 where the device
+! list has other devices (Touch Panel, Airtames); not in this file - confirm on site.
 !
 ! Before starting
 !   - The patching sheet is from July 2025 and may be out of date. Most of
 !     these ports were down on 9 Oct, so the MACs could not be confirmed on
 !     the switch. Check each port in the pre-check: if a port is up with a
 !     MAC that is not 207b.d230.xxxx, leave that port's lines out
-!   - VLAN 2700 exists on lv3 and lv4, tagged on lag 10, with spanning-tree.
-!     The core has ve 2700 (10.21.36.0/23) with DHCP helpers
+!   - VLAN 2100 exists on lv3 and lv4, tagged on lag 10, with spanning-tree.
+!     The core has ve 2100 (10.21.3.0/24) with DHCP helpers
 !
-! Same method as the cutover: CHANGE removes 1230 first, then adds 2700 untagged.
+! Same method as the cutover: CHANGE removes 1230 first, then adds 2100 untagged.
 ! Tagged VLANs are not touched. PORT BOUNCE makes DHCP devices renew; it does
-! not remove PoE. 2700 runs spanning-tree, so ports go Listen > Learn > Forward
+! not remove PoE. 2100 runs spanning-tree, so ports go Listen > Learn > Forward
 ! (about 30 s) after the bounce before MACs are learned. A port that is down
-! needs no bounce: its device comes up on 2700 when it next connects.
+! needs no bounce: its device comes up on 2100 when it next connects.
 ! Per switch: PRE-CHECK > CHANGE > PORT BOUNCE > VERIFY > write memory.
 !=============================================================================
 
@@ -39,19 +40,19 @@
 !=============================================================================
 !
 ! Port list (outlet label, old -> new, expected MAC)
-!   2/1/17   1230 -> 2700  200V3J5    207b.d230.98f3
-!   4/1/43   1230 -> 2700  200V3G16   207b.d230.98d6
-!   5/1/11   1230 -> 2700  200V3H2    207b.d230.9909
-!   5/1/23   1230 -> 2700  200V3I8    207b.d230.98af
-!   5/1/29   1230 -> 2700  200V3I16   207b.d230.98d2
-!   5/1/40   1230 -> 2700  200V3H14   207b.d230.98b1
-!   5/1/47   1230 -> 2700  200V3H21   207b.d230.9929
+!   2/1/17   1230 -> 2100  200V3J5    207b.d230.98f3
+!   4/1/43   1230 -> 2100  200V3G16   207b.d230.98d6
+!   5/1/11   1230 -> 2100  200V3H2    207b.d230.9909
+!   5/1/23   1230 -> 2100  200V3I8    207b.d230.98af
+!   5/1/29   1230 -> 2100  200V3I16   207b.d230.98d2
+!   5/1/40   1230 -> 2100  200V3H14   207b.d230.98b1
+!   5/1/47   1230 -> 2100  200V3H21   207b.d230.9929
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-stack-lv3 PRE-CHECK (exec mode, read-only)
 !-----------------------------------------------------------------------------
 show vlan 1230
-show vlan 2700
+show vlan 2100
 show mac-address ethernet 2/1/17
 show mac-address ethernet 4/1/43
 show mac-address ethernet 5/1/11
@@ -74,7 +75,7 @@ vlan 1230
  no untagged ethernet 5/1/40
  no untagged ethernet 5/1/47
  exit
-vlan 2700
+vlan 2100
  untagged ethernet 2/1/17
  untagged ethernet 4/1/43
  untagged ethernet 5/1/11
@@ -141,7 +142,7 @@ end
 !-----------------------------------------------------------------------------
 ! switch-200V-stack-lv3 VERIFY
 !-----------------------------------------------------------------------------
-show vlan 2700
+show vlan 2100
 show mac-address ethernet 2/1/17
 show mac-address ethernet 4/1/43
 show mac-address ethernet 5/1/11
@@ -157,7 +158,7 @@ write memory
 ! switch-200V-stack-lv3 ROLLBACK (only if needed)
 !-----------------------------------------------------------------------------
 configure terminal
-vlan 2700
+vlan 2100
  no untagged ethernet 2/1/17
  no untagged ethernet 4/1/43
  no untagged ethernet 5/1/11
@@ -183,18 +184,18 @@ end
 !=============================================================================
 !
 ! Port list (outlet label, old -> new, expected MAC)
-!   1/1/15   1230 -> 2700  200V4H22   207b.d230.98fd
-!   1/1/21   1230 -> 2700  200V4I10   207b.d230.98ef
-!   1/1/30   1230 -> 2700  200V4J4    207b.d230.98db
-!   1/1/34   1230 -> 2700  200V4J14   207b.d230.990e
-!   4/1/4    1230 -> 2700  200V4F5    207b.d230.98df
-!   4/1/26   1230 -> 2700  200V4H2    207b.d230.98c2
+!   1/1/15   1230 -> 2100  200V4H22   207b.d230.98fd
+!   1/1/21   1230 -> 2100  200V4I10   207b.d230.98ef
+!   1/1/30   1230 -> 2100  200V4J4    207b.d230.98db
+!   1/1/34   1230 -> 2100  200V4J14   207b.d230.990e
+!   4/1/4    1230 -> 2100  200V4F5    207b.d230.98df
+!   4/1/26   1230 -> 2100  200V4H2    207b.d230.98c2
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-stack-lv4 PRE-CHECK (exec mode, read-only)
 !-----------------------------------------------------------------------------
 show vlan 1230
-show vlan 2700
+show vlan 2100
 show mac-address ethernet 1/1/15
 show mac-address ethernet 1/1/21
 show mac-address ethernet 1/1/30
@@ -215,7 +216,7 @@ vlan 1230
  no untagged ethernet 4/1/4
  no untagged ethernet 4/1/26
  exit
-vlan 2700
+vlan 2100
  untagged ethernet 1/1/15
  untagged ethernet 1/1/21
  untagged ethernet 1/1/30
@@ -275,7 +276,7 @@ end
 !-----------------------------------------------------------------------------
 ! switch-200V-stack-lv4 VERIFY
 !-----------------------------------------------------------------------------
-show vlan 2700
+show vlan 2100
 show mac-address ethernet 1/1/15
 show mac-address ethernet 1/1/21
 show mac-address ethernet 1/1/30
@@ -290,7 +291,7 @@ write memory
 ! switch-200V-stack-lv4 ROLLBACK (only if needed)
 !-----------------------------------------------------------------------------
 configure terminal
-vlan 2700
+vlan 2100
  no untagged ethernet 1/1/15
  no untagged ethernet 1/1/21
  no untagged ethernet 1/1/30
