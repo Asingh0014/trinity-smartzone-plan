@@ -3,6 +3,7 @@
 ! Ruckus ICX, FastIron 10.0.10g
 ! Source: device MAC/outlet list, ports from Switch Physical Patching - Dycom
 !   2025-07-30.xlsx (Level 3 and Level 4 sheets, Type = AV)
+! Status: applied 10 Oct 2026 on lv3 and lv4 (all 13 ports), saved
 !=============================================================================
 !
 ! Scope: untagged VLAN on 13 access ports across 2 switches
