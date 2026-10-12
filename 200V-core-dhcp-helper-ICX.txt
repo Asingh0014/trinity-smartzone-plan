@@ -1,0 +1,221 @@
+!=============================================================================
+! trinity200V-core - DHCP helper change: 192.168.12.116 -> 10.20.16.11
+! Ruckus ICX, FastIron 10.0.10g
+! Scope: ip helper-address 2 on all 22 VEs. Helper 1 (10.20.16.10) is not changed
+!=============================================================================
+!
+! Before starting: 10.20.16.11 has scopes and reservations for every 10.21.x subnet
+!
+!-----------------------------------------------------------------------------
+! PRE-CHECK (exec mode)
+!-----------------------------------------------------------------------------
+show running-config | include helper-address
+! Expect 44 lines: helper-address 1 10.20.16.10 and helper-address 2 192.168.12.116 on each of 22 VEs
+!
+!-----------------------------------------------------------------------------
+! CHANGE - block 1 of 2
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 2000
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2010
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2020
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2100
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2200
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2300
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2310
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2320
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2400
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2500
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2510
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! CHANGE - block 2 of 2
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 2520
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2530
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2600
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2700
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2800
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2810
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2900
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2950
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2951
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2952
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+interface ve 2953
+ no ip helper-address 2 192.168.12.116
+ ip helper-address 2 10.20.16.11
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! VERIFY
+!-----------------------------------------------------------------------------
+show running-config | include helper-address 2
+! Expect 22 lines, all 10.20.16.11, none 192.168.12.116
+write memory
+!
+!-----------------------------------------------------------------------------
+! ROLLBACK - block 1 of 2 (only if needed)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 2000
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2010
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2020
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2100
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2200
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2300
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2310
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2320
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2400
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2500
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2510
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! ROLLBACK - block 2 of 2 (only if needed)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 2520
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2530
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2600
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2700
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2800
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2810
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2900
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2950
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2951
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2952
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+interface ve 2953
+ no ip helper-address 2 10.20.16.11
+ ip helper-address 2 192.168.12.116
+ exit
+end
+write memory
