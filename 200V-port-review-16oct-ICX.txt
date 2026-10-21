@@ -1,0 +1,2134 @@
+!=============================================================================
+! 200V switch port clean-up - Trinity recommendations (column Q)
+! Ruckus ICX, FastIron 10.0.10g
+! Source: Trinity_switch_ports_16-10-2026.xlsx (SmartZone export 16 Oct 2026 08:31),
+!   Ports tab, column Q 'Trinity Recommendation'
+!=============================================================================
+!
+! Scope: 267 access ports on 8 switches (260 in the MAIN blocks, 7 in
+! PENDING blocks that wait for Trinity's answers)
+!   switch-200V-stack-lv3       192.168.122.22     31 main  1 pending
+!   switch-200V-stack-lv4       192.168.122.21     52 main  2 pending
+!   switch-200V-stack-lv6       192.168.122.11    144 main  0 pending
+!   switch-200V-LT2-1           192.168.122.12      5 main  0 pending
+!   switch-200V-LT2-2           192.168.122.13     10 main  1 pending
+!   switch-200V-LT2-3           192.168.122.14     10 main  0 pending
+!   switch-200V-Tutorial-6.03   192.168.122.15      1 main  0 pending
+!   switch-200V-8               192.168.122.16      7 main  3 pending
+!
+! What changes
+!      6  Remove VLAN trunk settings, set to default VLAN
+!     55  Remove VLAN, set to default VLAN
+!    170  Change access VLAN to VL-staff-wired-01 (2100)
+!     29  Change access VLAN to VL-staff-wired-01 (2100). Remove TRUNK VLANs
+!   'Default VLAN' is VLAN 1 (DEFAULT-VLAN). On ICX, removing a port's untagged
+!   VLAN returns it to VLAN 1, so there is no 'untagged' line for VLAN 1. VLAN 1
+!   has no IP address on the core (interface ve 1 is empty): a device plugged
+!   into one of these ports gets no network
+!
+! PENDING (do not paste until Trinity confirm; see the email of 21 Oct)
+!   stack-lv3        2/1/27  -> 2100      item 1: 20:7B:D2:30:98:C1 (200V3J14) seen 15 Oct; Trinity said default VLAN
+!   stack-lv4        4/1/32  -> 2100      item 1: 20:7B:D2:30:99:15 (200V4H9) seen 14 Oct; Trinity said default VLAN
+!   stack-lv4        5/1/19  -> 2100      item 1: 20:7B:D2:30:99:25 (200V4I17) seen 14 Oct; Trinity said default VLAN
+!   LT2-2            1/1/1   -> 1         item 3: not the LT2-2 uplink (1/1/12); confirm no switch is to be connected
+!   8                1/1/7   -> 2000|2100 item 2: 00:09:F5:32:DB:15 (10.9.9.97), device type to confirm
+!   8                1/1/8   -> 2000|2100 item 2: 00:09:F5:32:DB:D1 (10.9.9.96), device type to confirm
+!   8                1/1/9   -> 2000|2100 item 2: 00:09:F5:32:DB:14 (10.9.9.95), device type to confirm
+!
+! Before starting
+!   - The export is from 16 Oct. Run each switch's PRE-CHECK: every port in its
+!     list should still be untagged in the 'now' VLAN. If a port has changed or
+!     has a device that is not expected, leave its lines out
+!   - VLAN 2100 exists on every switch here and is tagged on its uplink
+!   - Only ports that were Up on 16 Oct are bounced; a port that is down needs
+!     no bounce, its device joins the new VLAN when it next connects
+!
+! Same method as the cutover: CHANGE removes the old untagged VLAN, adds the new
+! untagged VLAN (2100 only), then removes the tagged VLANs where column Q says
+! 'remove trunk'. Per switch: PRE-CHECK > CHANGE > PORT BOUNCE > VERIFY >
+! write memory. ROLLBACK puts every port back as it was on 16 Oct.
+!=============================================================================
+
+!=============================================================================
+! switch-200V-stack-lv3  (192.168.122.22)  -  31 ports + 1 pending
+!=============================================================================
+!
+! Port list (now untagged [tagged] -> new, link on 16 Oct, MAC seen)
+!   1/1/12    100 [1212, 1213, 1230, 1240, 1250, 1271, 1272, 1273] -> 1 (default) Down   (tagged removed)
+!   1/1/34   1230 -> 1 (default) Down  
+!   2/1/14   1230 -> 1 (default) Down  
+!   2/1/24   1230 -> 1 (default) Down  
+!   2/1/34   1230 -> 1 (default) Down  
+!   3/1/3    1240 -> 2100        Down  
+!   3/1/7    1240 -> 2100        Down  
+!   3/1/10   1240 -> 2100        Down  
+!   3/1/11   1240 -> 2100        Down  
+!   3/1/13   1240 -> 2100        Up    1C:1A:DF:C2:51:C2
+!   3/1/15   1240 -> 2100        Down  
+!   3/1/16   1240 -> 2100        Up    A0:4A:5E:E7:D5:7C
+!   3/1/19   1240 -> 2100        Down  
+!   3/1/27   1240 -> 2100        Down  
+!   3/1/28    230 -> 1 (default) Down  
+!   4/1/2    1240 -> 2100        Down  
+!   4/1/23   1240 -> 2100        Down  
+!   4/1/24   1240 -> 2100        Down  
+!   4/1/25   1240 -> 2100        Down  
+!   4/1/26   1240 -> 2100        Down  
+!   4/1/27   1240 -> 2100        Down  
+!   4/1/45   1230 -> 1 (default) Down  
+!   5/1/4    1230 -> 1 (default) Down  
+!   5/1/5    1230 -> 1 (default) Down  
+!   5/1/6    1230 -> 1 (default) Down  
+!   5/1/7    1230 -> 1 (default) Down  
+!   5/1/13   1230 -> 1 (default) Down  
+!   5/1/15   1230 -> 1 (default) Down  
+!   5/1/20   1230 -> 1 (default) Down  
+!   5/1/32   1230 -> 1 (default) Down  
+!   5/1/43   1230 -> 1 (default) Down  
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+show vlan 100
+show vlan 230
+show vlan 1212
+show vlan 1213
+show vlan 1230
+show vlan 1240
+show vlan 1250
+show vlan 1271
+show vlan 1272
+show vlan 1273
+show vlan 2100
+show mac-address ethernet 3/1/13
+show mac-address ethernet 3/1/16
+! Expect each port untagged in its 'now' VLAN (and tagged as listed)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 100
+ no untagged ethernet 1/1/12
+ exit
+vlan 230
+ no untagged ethernet 3/1/28
+ exit
+vlan 1230
+ no untagged ethernet 1/1/34
+ no untagged ethernet 2/1/14
+ no untagged ethernet 2/1/24
+ no untagged ethernet 2/1/34
+ no untagged ethernet 4/1/45
+ no untagged ethernet 5/1/4 to 5/1/7
+ no untagged ethernet 5/1/13
+ no untagged ethernet 5/1/15
+ no untagged ethernet 5/1/20
+ no untagged ethernet 5/1/32
+ no untagged ethernet 5/1/43
+ exit
+vlan 1240
+ no untagged ethernet 3/1/3
+ no untagged ethernet 3/1/7
+ no untagged ethernet 3/1/10 to 3/1/11
+ no untagged ethernet 3/1/13
+ no untagged ethernet 3/1/15 to 3/1/16
+ no untagged ethernet 3/1/19
+ no untagged ethernet 3/1/27
+ no untagged ethernet 4/1/2
+ no untagged ethernet 4/1/23 to 4/1/27
+ exit
+vlan 2100
+ untagged ethernet 3/1/3
+ untagged ethernet 3/1/7
+ untagged ethernet 3/1/10 to 3/1/11
+ untagged ethernet 3/1/13
+ untagged ethernet 3/1/15 to 3/1/16
+ untagged ethernet 3/1/19
+ untagged ethernet 3/1/27
+ untagged ethernet 4/1/2
+ untagged ethernet 4/1/23 to 4/1/27
+ exit
+vlan 1212
+ no tagged ethernet 1/1/12
+ exit
+vlan 1213
+ no tagged ethernet 1/1/12
+ exit
+vlan 1230
+ no tagged ethernet 1/1/12
+ exit
+vlan 1240
+ no tagged ethernet 1/1/12
+ exit
+vlan 1250
+ no tagged ethernet 1/1/12
+ exit
+vlan 1271
+ no tagged ethernet 1/1/12
+ exit
+vlan 1272
+ no tagged ethernet 1/1/12
+ exit
+vlan 1273
+ no tagged ethernet 1/1/12
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 PORT BOUNCE (2 ports that were Up on 16 Oct)
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 3/1/13
+ disable
+ exit
+interface ethernet 3/1/16
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 3/1/13
+ enable
+ exit
+interface ethernet 3/1/16
+ enable
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 VERIFY
+!-----------------------------------------------------------------------------
+show vlan 100
+show vlan 230
+show vlan 1212
+show vlan 1213
+show vlan 1230
+show vlan 1240
+show vlan 1250
+show vlan 1271
+show vlan 1272
+show vlan 1273
+show vlan 2100
+show mac-address ethernet 3/1/13
+show mac-address ethernet 3/1/16
+! Expect: the ports gone from the old VLANs, the 2100 ports untagged in 2100,
+! and each bounced port's MAC learned again (on 2100)
+! Then save:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 ROLLBACK (only if needed)
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 2100
+ no untagged ethernet 3/1/3
+ no untagged ethernet 3/1/7
+ no untagged ethernet 3/1/10 to 3/1/11
+ no untagged ethernet 3/1/13
+ no untagged ethernet 3/1/15 to 3/1/16
+ no untagged ethernet 3/1/19
+ no untagged ethernet 3/1/27
+ no untagged ethernet 4/1/2
+ no untagged ethernet 4/1/23 to 4/1/27
+ exit
+vlan 100
+ untagged ethernet 1/1/12
+ exit
+vlan 230
+ untagged ethernet 3/1/28
+ exit
+vlan 1230
+ untagged ethernet 1/1/34
+ untagged ethernet 2/1/14
+ untagged ethernet 2/1/24
+ untagged ethernet 2/1/34
+ untagged ethernet 4/1/45
+ untagged ethernet 5/1/4 to 5/1/7
+ untagged ethernet 5/1/13
+ untagged ethernet 5/1/15
+ untagged ethernet 5/1/20
+ untagged ethernet 5/1/32
+ untagged ethernet 5/1/43
+ exit
+vlan 1240
+ untagged ethernet 3/1/3
+ untagged ethernet 3/1/7
+ untagged ethernet 3/1/10 to 3/1/11
+ untagged ethernet 3/1/13
+ untagged ethernet 3/1/15 to 3/1/16
+ untagged ethernet 3/1/19
+ untagged ethernet 3/1/27
+ untagged ethernet 4/1/2
+ untagged ethernet 4/1/23 to 4/1/27
+ exit
+vlan 1212
+ tagged ethernet 1/1/12
+ exit
+vlan 1213
+ tagged ethernet 1/1/12
+ exit
+vlan 1230
+ tagged ethernet 1/1/12
+ exit
+vlan 1240
+ tagged ethernet 1/1/12
+ exit
+vlan 1250
+ tagged ethernet 1/1/12
+ exit
+vlan 1271
+ tagged ethernet 1/1/12
+ exit
+vlan 1272
+ tagged ethernet 1/1/12
+ exit
+vlan 1273
+ tagged ethernet 1/1/12
+ exit
+end
+! Then run the PORT BOUNCE again and write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 PENDING - paste only after Trinity confirm
+!-----------------------------------------------------------------------------
+!   2/1/27   1230 -> 2100      item 1: 20:7B:D2:30:98:C1 (200V3J14) seen 15 Oct; Trinity said default VLAN
+configure terminal
+vlan 1230
+ no untagged ethernet 2/1/27
+ exit
+vlan 2100
+ untagged ethernet 2/1/27
+ exit
+end
+! Verify with show vlan and show mac-address ethernet <port>, then write memory
+! Rollback:
+configure terminal
+vlan 2100
+ no untagged ethernet 2/1/27
+ exit
+vlan 1230
+ untagged ethernet 2/1/27
+ exit
+end
+!
+
+!=============================================================================
+! switch-200V-stack-lv4  (192.168.122.21)  -  52 ports + 2 pending
+!=============================================================================
+!
+! Port list (now untagged [tagged] -> new, link on 16 Oct, MAC seen)
+!   1/1/8     100 [1272, 1273, 2300, 2310, 2311, 2320, 2321, 2900] -> 1 (default) Down   (tagged removed)
+!   1/1/17   1230 -> 1 (default) Down  
+!   1/1/32   1230 -> 1 (default) Down  
+!   2/1/8    1212 -> 1 (default) Down  
+!   2/1/18   1230 -> 1 (default) Down  
+!   2/1/20   1230 -> 1 (default) Down  
+!   3/1/4    1240 -> 2100        Up    A0:4A:5E:E7:35:43
+!   3/1/5    1240 -> 2100        Down  
+!   3/1/9    1240 -> 2100        Down  
+!   3/1/11   1240 -> 2100        Up    
+!   3/1/13   1240 -> 2100        Down  
+!   3/1/14   1240 -> 2100        Down  
+!   3/1/19   1240 -> 2100        Down  
+!   3/1/20   1240 -> 2100        Down  
+!   3/1/21   1240 -> 2100        Down  
+!   3/1/22   1240 -> 2100        Down  
+!   3/1/27   1240 -> 2100        Down  
+!   3/1/29   1240 -> 2100        Down  
+!   3/1/30   1240 -> 2100        Down  
+!   3/1/35   1240 -> 2100        Down  
+!   3/1/37   1240 -> 2100        Down  
+!   3/1/39   1240 -> 2100        Up    1C:1A:DF:C2:51:D3
+!   3/1/42   1240 -> 2100        Up    4C:C5:D9:CD:B4:CC
+!   3/1/43   1240 -> 2100        Down  
+!   3/1/45   1240 -> 2100        Down  
+!   3/1/47   1240 -> 2100        Down  
+!   3/1/48   1240 -> 2100        Down  
+!   4/1/1    1230 -> 1 (default) Down  
+!   4/1/2    1230 -> 1 (default) Down  
+!   4/1/7    1230 -> 1 (default) Down  
+!   4/1/10   1230 -> 1 (default) Down  
+!   4/1/16   1230 -> 1 (default) Down  
+!   4/1/17   1230 -> 1 (default) Down  
+!   4/1/27   1230 -> 1 (default) Down  
+!   4/1/28   1230 -> 1 (default) Down  
+!   4/1/29   1230 -> 1 (default) Down  
+!   4/1/31   1230 -> 1 (default) Down  
+!   4/1/38   1230 -> 1 (default) Down  
+!   4/1/39   1230 -> 1 (default) Down  
+!   4/1/44   1230 -> 1 (default) Down  
+!   5/1/1    1230 -> 1 (default) Down  
+!   5/1/2    1230 -> 1 (default) Down  
+!   5/1/5    1230 -> 1 (default) Down  
+!   5/1/14   1230 -> 1 (default) Down  
+!   5/1/16   1230 -> 1 (default) Down  
+!   5/1/24   1230 -> 1 (default) Down  
+!   5/1/26   1230 -> 1 (default) Down  
+!   5/1/35   1230 -> 1 (default) Down  
+!   5/1/38   1230 -> 1 (default) Down  
+!   5/1/40   1230 -> 1 (default) Down  
+!   5/1/43   1230 -> 1 (default) Down  
+!   5/1/47   1230 -> 1 (default) Down  
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+show vlan 100
+show vlan 1212
+show vlan 1230
+show vlan 1240
+show vlan 1272
+show vlan 1273
+show vlan 2100
+show vlan 2300
+show vlan 2310
+show vlan 2311
+show vlan 2320
+show vlan 2321
+show vlan 2900
+show mac-address ethernet 3/1/4
+show mac-address ethernet 3/1/11
+show mac-address ethernet 3/1/39
+show mac-address ethernet 3/1/42
+! Expect each port untagged in its 'now' VLAN (and tagged as listed)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 100
+ no untagged ethernet 1/1/8
+ exit
+vlan 1212
+ no untagged ethernet 2/1/8
+ exit
+vlan 1230
+ no untagged ethernet 1/1/17
+ no untagged ethernet 1/1/32
+ no untagged ethernet 2/1/18
+ no untagged ethernet 2/1/20
+ no untagged ethernet 4/1/1 to 4/1/2
+ no untagged ethernet 4/1/7
+ no untagged ethernet 4/1/10
+ no untagged ethernet 4/1/16 to 4/1/17
+ no untagged ethernet 4/1/27 to 4/1/29
+ no untagged ethernet 4/1/31
+ no untagged ethernet 4/1/38 to 4/1/39
+ no untagged ethernet 4/1/44
+ no untagged ethernet 5/1/1 to 5/1/2
+ no untagged ethernet 5/1/5
+ no untagged ethernet 5/1/14
+ no untagged ethernet 5/1/16
+ no untagged ethernet 5/1/24
+ no untagged ethernet 5/1/26
+ no untagged ethernet 5/1/35
+ no untagged ethernet 5/1/38
+ no untagged ethernet 5/1/40
+ no untagged ethernet 5/1/43
+ no untagged ethernet 5/1/47
+ exit
+vlan 1240
+ no untagged ethernet 3/1/4 to 3/1/5
+ no untagged ethernet 3/1/9
+ no untagged ethernet 3/1/11
+ no untagged ethernet 3/1/13 to 3/1/14
+ no untagged ethernet 3/1/19 to 3/1/22
+ no untagged ethernet 3/1/27
+ no untagged ethernet 3/1/29 to 3/1/30
+ no untagged ethernet 3/1/35
+ no untagged ethernet 3/1/37
+ no untagged ethernet 3/1/39
+ no untagged ethernet 3/1/42 to 3/1/43
+ no untagged ethernet 3/1/45
+ no untagged ethernet 3/1/47 to 3/1/48
+ exit
+vlan 2100
+ untagged ethernet 3/1/4 to 3/1/5
+ untagged ethernet 3/1/9
+ untagged ethernet 3/1/11
+ untagged ethernet 3/1/13 to 3/1/14
+ untagged ethernet 3/1/19 to 3/1/22
+ untagged ethernet 3/1/27
+ untagged ethernet 3/1/29 to 3/1/30
+ untagged ethernet 3/1/35
+ untagged ethernet 3/1/37
+ untagged ethernet 3/1/39
+ untagged ethernet 3/1/42 to 3/1/43
+ untagged ethernet 3/1/45
+ untagged ethernet 3/1/47 to 3/1/48
+ exit
+vlan 1272
+ no tagged ethernet 1/1/8
+ exit
+vlan 1273
+ no tagged ethernet 1/1/8
+ exit
+vlan 2300
+ no tagged ethernet 1/1/8
+ exit
+vlan 2310
+ no tagged ethernet 1/1/8
+ exit
+vlan 2311
+ no tagged ethernet 1/1/8
+ exit
+vlan 2320
+ no tagged ethernet 1/1/8
+ exit
+vlan 2321
+ no tagged ethernet 1/1/8
+ exit
+vlan 2900
+ no tagged ethernet 1/1/8
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 PORT BOUNCE (4 ports that were Up on 16 Oct)
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 3/1/4
+ disable
+ exit
+interface ethernet 3/1/11
+ disable
+ exit
+interface ethernet 3/1/39
+ disable
+ exit
+interface ethernet 3/1/42
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 3/1/4
+ enable
+ exit
+interface ethernet 3/1/11
+ enable
+ exit
+interface ethernet 3/1/39
+ enable
+ exit
+interface ethernet 3/1/42
+ enable
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 VERIFY
+!-----------------------------------------------------------------------------
+show vlan 100
+show vlan 1212
+show vlan 1230
+show vlan 1240
+show vlan 1272
+show vlan 1273
+show vlan 2100
+show vlan 2300
+show vlan 2310
+show vlan 2311
+show vlan 2320
+show vlan 2321
+show vlan 2900
+show mac-address ethernet 3/1/4
+show mac-address ethernet 3/1/11
+show mac-address ethernet 3/1/39
+show mac-address ethernet 3/1/42
+! Expect: the ports gone from the old VLANs, the 2100 ports untagged in 2100,
+! and each bounced port's MAC learned again (on 2100)
+! Then save:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 ROLLBACK (only if needed)
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 2100
+ no untagged ethernet 3/1/4 to 3/1/5
+ no untagged ethernet 3/1/9
+ no untagged ethernet 3/1/11
+ no untagged ethernet 3/1/13 to 3/1/14
+ no untagged ethernet 3/1/19 to 3/1/22
+ no untagged ethernet 3/1/27
+ no untagged ethernet 3/1/29 to 3/1/30
+ no untagged ethernet 3/1/35
+ no untagged ethernet 3/1/37
+ no untagged ethernet 3/1/39
+ no untagged ethernet 3/1/42 to 3/1/43
+ no untagged ethernet 3/1/45
+ no untagged ethernet 3/1/47 to 3/1/48
+ exit
+vlan 100
+ untagged ethernet 1/1/8
+ exit
+vlan 1212
+ untagged ethernet 2/1/8
+ exit
+vlan 1230
+ untagged ethernet 1/1/17
+ untagged ethernet 1/1/32
+ untagged ethernet 2/1/18
+ untagged ethernet 2/1/20
+ untagged ethernet 4/1/1 to 4/1/2
+ untagged ethernet 4/1/7
+ untagged ethernet 4/1/10
+ untagged ethernet 4/1/16 to 4/1/17
+ untagged ethernet 4/1/27 to 4/1/29
+ untagged ethernet 4/1/31
+ untagged ethernet 4/1/38 to 4/1/39
+ untagged ethernet 4/1/44
+ untagged ethernet 5/1/1 to 5/1/2
+ untagged ethernet 5/1/5
+ untagged ethernet 5/1/14
+ untagged ethernet 5/1/16
+ untagged ethernet 5/1/24
+ untagged ethernet 5/1/26
+ untagged ethernet 5/1/35
+ untagged ethernet 5/1/38
+ untagged ethernet 5/1/40
+ untagged ethernet 5/1/43
+ untagged ethernet 5/1/47
+ exit
+vlan 1240
+ untagged ethernet 3/1/4 to 3/1/5
+ untagged ethernet 3/1/9
+ untagged ethernet 3/1/11
+ untagged ethernet 3/1/13 to 3/1/14
+ untagged ethernet 3/1/19 to 3/1/22
+ untagged ethernet 3/1/27
+ untagged ethernet 3/1/29 to 3/1/30
+ untagged ethernet 3/1/35
+ untagged ethernet 3/1/37
+ untagged ethernet 3/1/39
+ untagged ethernet 3/1/42 to 3/1/43
+ untagged ethernet 3/1/45
+ untagged ethernet 3/1/47 to 3/1/48
+ exit
+vlan 1272
+ tagged ethernet 1/1/8
+ exit
+vlan 1273
+ tagged ethernet 1/1/8
+ exit
+vlan 2300
+ tagged ethernet 1/1/8
+ exit
+vlan 2310
+ tagged ethernet 1/1/8
+ exit
+vlan 2311
+ tagged ethernet 1/1/8
+ exit
+vlan 2320
+ tagged ethernet 1/1/8
+ exit
+vlan 2321
+ tagged ethernet 1/1/8
+ exit
+vlan 2900
+ tagged ethernet 1/1/8
+ exit
+end
+! Then run the PORT BOUNCE again and write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 PENDING - paste only after Trinity confirm
+!-----------------------------------------------------------------------------
+!   4/1/32   1272 -> 2100      item 1: 20:7B:D2:30:99:15 (200V4H9) seen 14 Oct; Trinity said default VLAN
+!   5/1/19   1272 -> 2100      item 1: 20:7B:D2:30:99:25 (200V4I17) seen 14 Oct; Trinity said default VLAN
+configure terminal
+vlan 1272
+ no untagged ethernet 4/1/32
+ no untagged ethernet 5/1/19
+ exit
+vlan 2100
+ untagged ethernet 4/1/32
+ untagged ethernet 5/1/19
+ exit
+end
+! Verify with show vlan and show mac-address ethernet <port>, then write memory
+! Rollback:
+configure terminal
+vlan 2100
+ no untagged ethernet 4/1/32
+ no untagged ethernet 5/1/19
+ exit
+vlan 1272
+ untagged ethernet 4/1/32
+ untagged ethernet 5/1/19
+ exit
+end
+!
+
+!=============================================================================
+! switch-200V-stack-lv6  (192.168.122.11)  -  144 ports
+!=============================================================================
+!
+! Port list (now untagged [tagged] -> new, link on 16 Oct, MAC seen)
+!   1/1/1    1240 [1230, 1250, 1271, 1272, 1273] -> 2100        Down   (tagged removed)
+!   1/1/2    1240 [1230, 1250, 1271, 1272, 1273] -> 2100        Down   (tagged removed)
+!   1/1/4    1240 [1230, 1250, 1271, 1272, 1273] -> 2100        Down   (tagged removed)
+!   1/1/5    1240 [1230, 1250, 1271, 1272, 1273] -> 2100        Down   (tagged removed)
+!   1/1/7    1240 [1230, 1250, 1271, 1272, 1273] -> 2100        Down   (tagged removed)
+!   1/1/11   1240 [1272, 1273] -> 2100        Down   (tagged removed)
+!   1/1/12   1240 [1272, 1273] -> 2100        Down   (tagged removed)
+!   1/1/30   1240 [1272, 1273] -> 2100        Down   (tagged removed)
+!   1/1/32   1240 [1272, 1273] -> 2100        Up    1C:1A:DF:C2:4F:5E (tagged removed)
+!   1/1/33   1240 [1272, 1273] -> 2100        Down   (tagged removed)
+!   1/1/34   1240 [1272, 1273] -> 2100        Down   (tagged removed)
+!   1/1/35    100 [1212, 1213, 1230, 1240, 1250, 1271, 1272, 1273] -> 1 (default) Down   (tagged removed)
+!   1/1/36   1240 [1272, 1273] -> 2100        Down   (tagged removed)
+!   1/1/41   1240 [1272, 1273] -> 2100        Down   (tagged removed)
+!   1/1/42   1240 [1272, 1273] -> 2100        Down   (tagged removed)
+!   1/1/43   1240 [1272, 1273] -> 2100        Up    A0:4A:5E:E7:E8:70 (tagged removed)
+!   1/1/44   1240 [1272, 1273] -> 2100        Down   (tagged removed)
+!   1/1/45   1240 [1272] -> 2100        Down   (tagged removed)
+!   1/1/46   1240 [1272, 1273] -> 2100        Down   (tagged removed)
+!   1/1/47   1240 [1273] -> 2100        Down   (tagged removed)
+!   1/1/48   1240 -> 2100        Down  
+!   2/1/4    1240 -> 2100        Down  
+!   2/1/5    1240 -> 2100        Down  
+!   2/1/6    1240 -> 2100        Up    1C:1A:DF:C2:51:28
+!   2/1/7    1240 -> 2100        Down  
+!   2/1/8    1240 -> 2100        Down  
+!   2/1/9    1240 -> 2100        Down  
+!   2/1/10   1240 -> 2100        Down  
+!   2/1/11   1240 -> 2100        Down  
+!   2/1/12   1240 -> 2100        Down  
+!   2/1/13   1240 -> 2100        Down  
+!   2/1/48   1240 -> 2100        Down  
+!   3/1/2    1230 -> 1 (default) Down  
+!   3/1/3    1240 -> 2100        Down  
+!   3/1/4    1240 -> 2100        Down  
+!   3/1/5    1240 -> 2100        Down  
+!   3/1/6    1240 -> 2100        Up    1C:1A:DF:C2:51:01
+!   3/1/7    1240 -> 2100        Up    1C:1A:DF:C0:98:69
+!   3/1/8    1240 -> 2100        Down  
+!   3/1/9    1240 -> 2100        Down  
+!   3/1/10   1240 -> 2100        Down  
+!   3/1/21   1240 -> 2100        Down  
+!   3/1/22   1240 -> 2100        Up    1C:1A:DF:C0:9A:AB
+!   3/1/23   1240 -> 2100        Down  
+!   4/1/2    1240 -> 2100        Down  
+!   4/1/3    1240 -> 2100        Down  
+!   4/1/7    1240 -> 2100        Down  
+!   4/1/9    1240 -> 2100        Down  
+!   5/1/2    1240 -> 2100        Down  
+!   5/1/3    1240 -> 2100        Down  
+!   5/1/4    1240 -> 2100        Down  
+!   5/1/5    1240 -> 2100        Up    1C:1A:DF:C2:51:DF
+!   5/1/6    1240 -> 2100        Up    
+!   5/1/7    1240 -> 2100        Down  
+!   5/1/8    1240 -> 2100        Down  
+!   5/1/9    1240 -> 2100        Down  
+!   5/1/10   1240 -> 2100        Up    1C:1A:DF:C0:9A:52
+!   5/1/11   1240 -> 2100        Down  
+!   5/1/12   1240 -> 2100        Down  
+!   5/1/13   1240 -> 2100        Down  
+!   5/1/14   1240 -> 2100        Down  
+!   5/1/15   1240 -> 2100        Down  
+!   5/1/16   1240 -> 2100        Down  
+!   5/1/17   1240 -> 2100        Down  
+!   5/1/18   1240 -> 2100        Down  
+!   5/1/19   1240 -> 2100        Up    1C:1A:DF:C2:50:05
+!   5/1/20   1240 -> 2100        Down  
+!   5/1/21   1240 -> 2100        Down  
+!   5/1/22   1240 -> 2100        Down  
+!   5/1/23   1240 -> 2100        Down  
+!   5/1/24   1240 -> 2100        Down  
+!   5/1/25   1240 -> 2100        Down  
+!   5/1/26   1240 -> 2100        Down  
+!   5/1/27   1240 -> 2100        Down  
+!   5/1/28   1240 -> 2100        Down  
+!   5/1/29   1240 -> 2100        Down  
+!   5/1/31   1240 -> 2100        Down  
+!   5/1/32   1240 -> 2100        Down  
+!   5/1/33   1240 -> 2100        Down  
+!   5/1/35    100 [230, 1212, 1213, 1230, 1250, 1271, 1272, 1273] -> 1 (default) Down   (tagged removed)
+!   5/1/36   1240 -> 2100        Down  
+!   5/1/37   1230 -> 1 (default) Down  
+!   5/1/39   1240 -> 2100        Down  
+!   5/1/40   1240 -> 2100        Down  
+!   5/1/41   1240 -> 2100        Up    4C:C5:D9:D0:8D:23
+!   5/1/43   1240 -> 2100        Down  
+!   5/1/44   1240 -> 2100        Up    1C:1A:DF:C2:45:3F
+!   5/1/45   1240 -> 2100        Down  
+!   5/1/46   1240 -> 2100        Down  
+!   5/1/47   1240 -> 2100        Down  
+!   6/1/1    1240 -> 2100        Down  
+!   6/1/2    1240 -> 2100        Down  
+!   6/1/3    1240 -> 2100        Down  
+!   6/1/4    1240 -> 2100        Down  
+!   6/1/5    1240 -> 2100        Down  
+!   6/1/6    1240 -> 2100        Down  
+!   6/1/7    1240 -> 2100        Down  
+!   6/1/8    1240 -> 2100        Down  
+!   6/1/9    1240 -> 2100        Down  
+!   6/1/10   1240 -> 2100        Down  
+!   6/1/11   1240 -> 2100        Down  
+!   6/1/12   1240 -> 2100        Down  
+!   6/1/13   1240 -> 2100        Down  
+!   6/1/14   1240 -> 2100        Down  
+!   6/1/15   1240 -> 2100        Down  
+!   6/1/17   1240 -> 2100        Down  
+!   6/1/18   1240 -> 2100        Down  
+!   6/1/19   1230 -> 1 (default) Down  
+!   6/1/21   1240 -> 2100        Down  
+!   6/1/23   1230 -> 1 (default) Down  
+!   6/1/25   1240 -> 2100        Down  
+!   6/1/29   1230 -> 1 (default) Down  
+!   6/1/32   1240 -> 2100        Down  
+!   6/1/33   1240 -> 2100        Down  
+!   6/1/36   1240 -> 2100        Down  
+!   6/1/37   1240 -> 2100        Down  
+!   6/1/42   1240 -> 2100        Down  
+!   6/1/43   1240 -> 2100        Down  
+!   6/1/44   1240 -> 2100        Down  
+!   6/1/47   1240 -> 2100        Down  
+!   6/1/48   1240 -> 2100        Down  
+!   7/1/2    1240 -> 2100        Down  
+!   7/1/6    1240 -> 2100        Down  
+!   7/1/7    1230 -> 1 (default) Down  
+!   7/1/12   1240 -> 2100        Down  
+!   7/1/13   1240 -> 2100        Down  
+!   7/1/15   1240 -> 2100        Down  
+!   7/1/16   1240 -> 2100        Down  
+!   7/1/18   1240 -> 2100        Down  
+!   7/1/20   1240 -> 2100        Down  
+!   7/1/21   1240 -> 2100        Down  
+!   7/1/25   1240 -> 2100        Down  
+!   7/1/26   1240 -> 2100        Down  
+!   7/1/29   1240 -> 2100        Down  
+!   7/1/36   1240 -> 2100        Down  
+!   7/1/37   1240 -> 2100        Down  
+!   7/1/38   1240 -> 2100        Down  
+!   7/1/39   1240 -> 2100        Down  
+!   7/1/41   1240 -> 2100        Down  
+!   7/1/42   1240 -> 2100        Down  
+!   7/1/45   1230 -> 1 (default) Down  
+!   7/1/46   1240 -> 2100        Down  
+!   7/1/47   1240 -> 2100        Down  
+!   7/1/48   1240 -> 2100        Down  
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+show vlan 100
+show vlan 230
+show vlan 1212
+show vlan 1213
+show vlan 1230
+show vlan 1240
+show vlan 1250
+show vlan 1271
+show vlan 1272
+show vlan 1273
+show vlan 2100
+show mac-address ethernet 1/1/32
+show mac-address ethernet 1/1/43
+show mac-address ethernet 2/1/6
+show mac-address ethernet 3/1/6
+show mac-address ethernet 3/1/7
+show mac-address ethernet 3/1/22
+show mac-address ethernet 5/1/5
+show mac-address ethernet 5/1/6
+show mac-address ethernet 5/1/10
+show mac-address ethernet 5/1/19
+show mac-address ethernet 5/1/41
+show mac-address ethernet 5/1/44
+! Expect each port untagged in its 'now' VLAN (and tagged as listed)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 100
+ no untagged ethernet 1/1/35
+ no untagged ethernet 5/1/35
+ exit
+vlan 1230
+ no untagged ethernet 3/1/2
+ no untagged ethernet 5/1/37
+ no untagged ethernet 6/1/19
+ no untagged ethernet 6/1/23
+ no untagged ethernet 6/1/29
+ no untagged ethernet 7/1/7
+ no untagged ethernet 7/1/45
+ exit
+vlan 1240
+ no untagged ethernet 1/1/1 to 1/1/2
+ no untagged ethernet 1/1/4 to 1/1/5
+ no untagged ethernet 1/1/7
+ no untagged ethernet 1/1/11 to 1/1/12
+ no untagged ethernet 1/1/30
+ no untagged ethernet 1/1/32 to 1/1/34
+ no untagged ethernet 1/1/36
+ no untagged ethernet 1/1/41 to 1/1/48
+ no untagged ethernet 2/1/4 to 2/1/13
+ no untagged ethernet 2/1/48
+ no untagged ethernet 3/1/3 to 3/1/10
+ no untagged ethernet 3/1/21 to 3/1/23
+ no untagged ethernet 4/1/2 to 4/1/3
+ no untagged ethernet 4/1/7
+ no untagged ethernet 4/1/9
+ no untagged ethernet 5/1/2 to 5/1/29
+ no untagged ethernet 5/1/31 to 5/1/33
+ no untagged ethernet 5/1/36
+ no untagged ethernet 5/1/39 to 5/1/41
+ no untagged ethernet 5/1/43 to 5/1/47
+ no untagged ethernet 6/1/1 to 6/1/15
+ no untagged ethernet 6/1/17 to 6/1/18
+ no untagged ethernet 6/1/21
+ no untagged ethernet 6/1/25
+ no untagged ethernet 6/1/32 to 6/1/33
+ no untagged ethernet 6/1/36 to 6/1/37
+ no untagged ethernet 6/1/42 to 6/1/44
+ no untagged ethernet 6/1/47 to 6/1/48
+ no untagged ethernet 7/1/2
+ no untagged ethernet 7/1/6
+ no untagged ethernet 7/1/12 to 7/1/13
+ no untagged ethernet 7/1/15 to 7/1/16
+ no untagged ethernet 7/1/18
+ no untagged ethernet 7/1/20 to 7/1/21
+ no untagged ethernet 7/1/25 to 7/1/26
+ no untagged ethernet 7/1/29
+ no untagged ethernet 7/1/36 to 7/1/39
+ no untagged ethernet 7/1/41 to 7/1/42
+ no untagged ethernet 7/1/46 to 7/1/48
+ exit
+vlan 2100
+ untagged ethernet 1/1/1 to 1/1/2
+ untagged ethernet 1/1/4 to 1/1/5
+ untagged ethernet 1/1/7
+ untagged ethernet 1/1/11 to 1/1/12
+ untagged ethernet 1/1/30
+ untagged ethernet 1/1/32 to 1/1/34
+ untagged ethernet 1/1/36
+ untagged ethernet 1/1/41 to 1/1/48
+ untagged ethernet 2/1/4 to 2/1/13
+ untagged ethernet 2/1/48
+ untagged ethernet 3/1/3 to 3/1/10
+ untagged ethernet 3/1/21 to 3/1/23
+ untagged ethernet 4/1/2 to 4/1/3
+ untagged ethernet 4/1/7
+ untagged ethernet 4/1/9
+ untagged ethernet 5/1/2 to 5/1/29
+ untagged ethernet 5/1/31 to 5/1/33
+ untagged ethernet 5/1/36
+ untagged ethernet 5/1/39 to 5/1/41
+ untagged ethernet 5/1/43 to 5/1/47
+ untagged ethernet 6/1/1 to 6/1/15
+ untagged ethernet 6/1/17 to 6/1/18
+ untagged ethernet 6/1/21
+ untagged ethernet 6/1/25
+ untagged ethernet 6/1/32 to 6/1/33
+ untagged ethernet 6/1/36 to 6/1/37
+ untagged ethernet 6/1/42 to 6/1/44
+ untagged ethernet 6/1/47 to 6/1/48
+ untagged ethernet 7/1/2
+ untagged ethernet 7/1/6
+ untagged ethernet 7/1/12 to 7/1/13
+ untagged ethernet 7/1/15 to 7/1/16
+ untagged ethernet 7/1/18
+ untagged ethernet 7/1/20 to 7/1/21
+ untagged ethernet 7/1/25 to 7/1/26
+ untagged ethernet 7/1/29
+ untagged ethernet 7/1/36 to 7/1/39
+ untagged ethernet 7/1/41 to 7/1/42
+ untagged ethernet 7/1/46 to 7/1/48
+ exit
+vlan 230
+ no tagged ethernet 5/1/35
+ exit
+vlan 1212
+ no tagged ethernet 1/1/35
+ no tagged ethernet 5/1/35
+ exit
+vlan 1213
+ no tagged ethernet 1/1/35
+ no tagged ethernet 5/1/35
+ exit
+vlan 1230
+ no tagged ethernet 1/1/1 to 1/1/2
+ no tagged ethernet 1/1/4 to 1/1/5
+ no tagged ethernet 1/1/7
+ no tagged ethernet 1/1/35
+ no tagged ethernet 5/1/35
+ exit
+vlan 1240
+ no tagged ethernet 1/1/35
+ exit
+vlan 1250
+ no tagged ethernet 1/1/1 to 1/1/2
+ no tagged ethernet 1/1/4 to 1/1/5
+ no tagged ethernet 1/1/7
+ no tagged ethernet 1/1/35
+ no tagged ethernet 5/1/35
+ exit
+vlan 1271
+ no tagged ethernet 1/1/1 to 1/1/2
+ no tagged ethernet 1/1/4 to 1/1/5
+ no tagged ethernet 1/1/7
+ no tagged ethernet 1/1/35
+ no tagged ethernet 5/1/35
+ exit
+vlan 1272
+ no tagged ethernet 1/1/1 to 1/1/2
+ no tagged ethernet 1/1/4 to 1/1/5
+ no tagged ethernet 1/1/7
+ no tagged ethernet 1/1/11 to 1/1/12
+ no tagged ethernet 1/1/30
+ no tagged ethernet 1/1/32 to 1/1/36
+ no tagged ethernet 1/1/41 to 1/1/46
+ no tagged ethernet 5/1/35
+ exit
+vlan 1273
+ no tagged ethernet 1/1/1 to 1/1/2
+ no tagged ethernet 1/1/4 to 1/1/5
+ no tagged ethernet 1/1/7
+ no tagged ethernet 1/1/11 to 1/1/12
+ no tagged ethernet 1/1/30
+ no tagged ethernet 1/1/32 to 1/1/36
+ no tagged ethernet 1/1/41 to 1/1/44
+ no tagged ethernet 1/1/46 to 1/1/47
+ no tagged ethernet 5/1/35
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 PORT BOUNCE (12 ports that were Up on 16 Oct)
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/32
+ disable
+ exit
+interface ethernet 1/1/43
+ disable
+ exit
+interface ethernet 2/1/6
+ disable
+ exit
+interface ethernet 3/1/6 to 3/1/7
+ disable
+ exit
+interface ethernet 3/1/22
+ disable
+ exit
+interface ethernet 5/1/5 to 5/1/6
+ disable
+ exit
+interface ethernet 5/1/10
+ disable
+ exit
+interface ethernet 5/1/19
+ disable
+ exit
+interface ethernet 5/1/41
+ disable
+ exit
+interface ethernet 5/1/44
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/32
+ enable
+ exit
+interface ethernet 1/1/43
+ enable
+ exit
+interface ethernet 2/1/6
+ enable
+ exit
+interface ethernet 3/1/6 to 3/1/7
+ enable
+ exit
+interface ethernet 3/1/22
+ enable
+ exit
+interface ethernet 5/1/5 to 5/1/6
+ enable
+ exit
+interface ethernet 5/1/10
+ enable
+ exit
+interface ethernet 5/1/19
+ enable
+ exit
+interface ethernet 5/1/41
+ enable
+ exit
+interface ethernet 5/1/44
+ enable
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 VERIFY
+!-----------------------------------------------------------------------------
+show vlan 100
+show vlan 230
+show vlan 1212
+show vlan 1213
+show vlan 1230
+show vlan 1240
+show vlan 1250
+show vlan 1271
+show vlan 1272
+show vlan 1273
+show vlan 2100
+show mac-address ethernet 1/1/32
+show mac-address ethernet 1/1/43
+show mac-address ethernet 2/1/6
+show mac-address ethernet 3/1/6
+show mac-address ethernet 3/1/7
+show mac-address ethernet 3/1/22
+show mac-address ethernet 5/1/5
+show mac-address ethernet 5/1/6
+show mac-address ethernet 5/1/10
+show mac-address ethernet 5/1/19
+show mac-address ethernet 5/1/41
+show mac-address ethernet 5/1/44
+! Expect: the ports gone from the old VLANs, the 2100 ports untagged in 2100,
+! and each bounced port's MAC learned again (on 2100)
+! Then save:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 ROLLBACK (only if needed)
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 2100
+ no untagged ethernet 1/1/1 to 1/1/2
+ no untagged ethernet 1/1/4 to 1/1/5
+ no untagged ethernet 1/1/7
+ no untagged ethernet 1/1/11 to 1/1/12
+ no untagged ethernet 1/1/30
+ no untagged ethernet 1/1/32 to 1/1/34
+ no untagged ethernet 1/1/36
+ no untagged ethernet 1/1/41 to 1/1/48
+ no untagged ethernet 2/1/4 to 2/1/13
+ no untagged ethernet 2/1/48
+ no untagged ethernet 3/1/3 to 3/1/10
+ no untagged ethernet 3/1/21 to 3/1/23
+ no untagged ethernet 4/1/2 to 4/1/3
+ no untagged ethernet 4/1/7
+ no untagged ethernet 4/1/9
+ no untagged ethernet 5/1/2 to 5/1/29
+ no untagged ethernet 5/1/31 to 5/1/33
+ no untagged ethernet 5/1/36
+ no untagged ethernet 5/1/39 to 5/1/41
+ no untagged ethernet 5/1/43 to 5/1/47
+ no untagged ethernet 6/1/1 to 6/1/15
+ no untagged ethernet 6/1/17 to 6/1/18
+ no untagged ethernet 6/1/21
+ no untagged ethernet 6/1/25
+ no untagged ethernet 6/1/32 to 6/1/33
+ no untagged ethernet 6/1/36 to 6/1/37
+ no untagged ethernet 6/1/42 to 6/1/44
+ no untagged ethernet 6/1/47 to 6/1/48
+ no untagged ethernet 7/1/2
+ no untagged ethernet 7/1/6
+ no untagged ethernet 7/1/12 to 7/1/13
+ no untagged ethernet 7/1/15 to 7/1/16
+ no untagged ethernet 7/1/18
+ no untagged ethernet 7/1/20 to 7/1/21
+ no untagged ethernet 7/1/25 to 7/1/26
+ no untagged ethernet 7/1/29
+ no untagged ethernet 7/1/36 to 7/1/39
+ no untagged ethernet 7/1/41 to 7/1/42
+ no untagged ethernet 7/1/46 to 7/1/48
+ exit
+vlan 100
+ untagged ethernet 1/1/35
+ untagged ethernet 5/1/35
+ exit
+vlan 1230
+ untagged ethernet 3/1/2
+ untagged ethernet 5/1/37
+ untagged ethernet 6/1/19
+ untagged ethernet 6/1/23
+ untagged ethernet 6/1/29
+ untagged ethernet 7/1/7
+ untagged ethernet 7/1/45
+ exit
+vlan 1240
+ untagged ethernet 1/1/1 to 1/1/2
+ untagged ethernet 1/1/4 to 1/1/5
+ untagged ethernet 1/1/7
+ untagged ethernet 1/1/11 to 1/1/12
+ untagged ethernet 1/1/30
+ untagged ethernet 1/1/32 to 1/1/34
+ untagged ethernet 1/1/36
+ untagged ethernet 1/1/41 to 1/1/48
+ untagged ethernet 2/1/4 to 2/1/13
+ untagged ethernet 2/1/48
+ untagged ethernet 3/1/3 to 3/1/10
+ untagged ethernet 3/1/21 to 3/1/23
+ untagged ethernet 4/1/2 to 4/1/3
+ untagged ethernet 4/1/7
+ untagged ethernet 4/1/9
+ untagged ethernet 5/1/2 to 5/1/29
+ untagged ethernet 5/1/31 to 5/1/33
+ untagged ethernet 5/1/36
+ untagged ethernet 5/1/39 to 5/1/41
+ untagged ethernet 5/1/43 to 5/1/47
+ untagged ethernet 6/1/1 to 6/1/15
+ untagged ethernet 6/1/17 to 6/1/18
+ untagged ethernet 6/1/21
+ untagged ethernet 6/1/25
+ untagged ethernet 6/1/32 to 6/1/33
+ untagged ethernet 6/1/36 to 6/1/37
+ untagged ethernet 6/1/42 to 6/1/44
+ untagged ethernet 6/1/47 to 6/1/48
+ untagged ethernet 7/1/2
+ untagged ethernet 7/1/6
+ untagged ethernet 7/1/12 to 7/1/13
+ untagged ethernet 7/1/15 to 7/1/16
+ untagged ethernet 7/1/18
+ untagged ethernet 7/1/20 to 7/1/21
+ untagged ethernet 7/1/25 to 7/1/26
+ untagged ethernet 7/1/29
+ untagged ethernet 7/1/36 to 7/1/39
+ untagged ethernet 7/1/41 to 7/1/42
+ untagged ethernet 7/1/46 to 7/1/48
+ exit
+vlan 230
+ tagged ethernet 5/1/35
+ exit
+vlan 1212
+ tagged ethernet 1/1/35
+ tagged ethernet 5/1/35
+ exit
+vlan 1213
+ tagged ethernet 1/1/35
+ tagged ethernet 5/1/35
+ exit
+vlan 1230
+ tagged ethernet 1/1/1 to 1/1/2
+ tagged ethernet 1/1/4 to 1/1/5
+ tagged ethernet 1/1/7
+ tagged ethernet 1/1/35
+ tagged ethernet 5/1/35
+ exit
+vlan 1240
+ tagged ethernet 1/1/35
+ exit
+vlan 1250
+ tagged ethernet 1/1/1 to 1/1/2
+ tagged ethernet 1/1/4 to 1/1/5
+ tagged ethernet 1/1/7
+ tagged ethernet 1/1/35
+ tagged ethernet 5/1/35
+ exit
+vlan 1271
+ tagged ethernet 1/1/1 to 1/1/2
+ tagged ethernet 1/1/4 to 1/1/5
+ tagged ethernet 1/1/7
+ tagged ethernet 1/1/35
+ tagged ethernet 5/1/35
+ exit
+vlan 1272
+ tagged ethernet 1/1/1 to 1/1/2
+ tagged ethernet 1/1/4 to 1/1/5
+ tagged ethernet 1/1/7
+ tagged ethernet 1/1/11 to 1/1/12
+ tagged ethernet 1/1/30
+ tagged ethernet 1/1/32 to 1/1/36
+ tagged ethernet 1/1/41 to 1/1/46
+ tagged ethernet 5/1/35
+ exit
+vlan 1273
+ tagged ethernet 1/1/1 to 1/1/2
+ tagged ethernet 1/1/4 to 1/1/5
+ tagged ethernet 1/1/7
+ tagged ethernet 1/1/11 to 1/1/12
+ tagged ethernet 1/1/30
+ tagged ethernet 1/1/32 to 1/1/36
+ tagged ethernet 1/1/41 to 1/1/44
+ tagged ethernet 1/1/46 to 1/1/47
+ tagged ethernet 5/1/35
+ exit
+end
+! Then run the PORT BOUNCE again and write memory
+
+!=============================================================================
+! switch-200V-LT2-1  (192.168.122.12)  -  5 ports
+!=============================================================================
+!
+! Port list (now untagged [tagged] -> new, link on 16 Oct, MAC seen)
+!   1/1/2     100 [1212, 1213, 1230, 1240, 1250, 1271, 1272, 1273] -> 1 (default) Down   (tagged removed)
+!   1/1/3    1230 -> 1 (default) Down  
+!   1/1/19   1230 -> 1 (default) Down  
+!   1/1/21   1240 -> 2100        Up    48:21:0B:56:AC:A4
+!   1/1/22   1230 -> 1 (default) Down  
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+show vlan 100
+show vlan 1212
+show vlan 1213
+show vlan 1230
+show vlan 1240
+show vlan 1250
+show vlan 1271
+show vlan 1272
+show vlan 1273
+show vlan 2100
+show mac-address ethernet 1/1/21
+! Expect each port untagged in its 'now' VLAN (and tagged as listed)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 100
+ no untagged ethernet 1/1/2
+ exit
+vlan 1230
+ no untagged ethernet 1/1/3
+ no untagged ethernet 1/1/19
+ no untagged ethernet 1/1/22
+ exit
+vlan 1240
+ no untagged ethernet 1/1/21
+ exit
+vlan 2100
+ untagged ethernet 1/1/21
+ exit
+vlan 1212
+ no tagged ethernet 1/1/2
+ exit
+vlan 1213
+ no tagged ethernet 1/1/2
+ exit
+vlan 1230
+ no tagged ethernet 1/1/2
+ exit
+vlan 1240
+ no tagged ethernet 1/1/2
+ exit
+vlan 1250
+ no tagged ethernet 1/1/2
+ exit
+vlan 1271
+ no tagged ethernet 1/1/2
+ exit
+vlan 1272
+ no tagged ethernet 1/1/2
+ exit
+vlan 1273
+ no tagged ethernet 1/1/2
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 PORT BOUNCE (1 port that was Up on 16 Oct)
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/21
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/21
+ enable
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 VERIFY
+!-----------------------------------------------------------------------------
+show vlan 100
+show vlan 1212
+show vlan 1213
+show vlan 1230
+show vlan 1240
+show vlan 1250
+show vlan 1271
+show vlan 1272
+show vlan 1273
+show vlan 2100
+show mac-address ethernet 1/1/21
+! Expect: the ports gone from the old VLANs, the 2100 ports untagged in 2100,
+! and each bounced port's MAC learned again (on 2100)
+! Then save:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 ROLLBACK (only if needed)
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 2100
+ no untagged ethernet 1/1/21
+ exit
+vlan 100
+ untagged ethernet 1/1/2
+ exit
+vlan 1230
+ untagged ethernet 1/1/3
+ untagged ethernet 1/1/19
+ untagged ethernet 1/1/22
+ exit
+vlan 1240
+ untagged ethernet 1/1/21
+ exit
+vlan 1212
+ tagged ethernet 1/1/2
+ exit
+vlan 1213
+ tagged ethernet 1/1/2
+ exit
+vlan 1230
+ tagged ethernet 1/1/2
+ exit
+vlan 1240
+ tagged ethernet 1/1/2
+ exit
+vlan 1250
+ tagged ethernet 1/1/2
+ exit
+vlan 1271
+ tagged ethernet 1/1/2
+ exit
+vlan 1272
+ tagged ethernet 1/1/2
+ exit
+vlan 1273
+ tagged ethernet 1/1/2
+ exit
+end
+! Then run the PORT BOUNCE again and write memory
+
+!=============================================================================
+! switch-200V-LT2-2  (192.168.122.13)  -  10 ports + 1 pending
+!=============================================================================
+!
+! Port list (now untagged [tagged] -> new, link on 16 Oct, MAC seen)
+!   1/1/2    1240 -> 2100        Down  
+!   1/1/3    1240 -> 2100        Down  
+!   1/1/4    1240 -> 2100        Down  
+!   1/1/5    1240 -> 2100        Down  
+!   1/1/6    1240 -> 2100        Down  
+!   1/1/7    1240 -> 2100        Up    
+!   1/1/8    1240 -> 2100        Down  
+!   1/1/9    1240 -> 2100        Down  
+!   1/1/10   1240 -> 2100        Down  
+!   1/1/11   1240 -> 2100        Down  
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-2 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+show vlan 1240
+show vlan 2100
+show mac-address ethernet 1/1/7
+! Expect each port untagged in its 'now' VLAN (and tagged as listed)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-2 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 1240
+ no untagged ethernet 1/1/2 to 1/1/11
+ exit
+vlan 2100
+ untagged ethernet 1/1/2 to 1/1/11
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-2 PORT BOUNCE (1 port that was Up on 16 Oct)
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/7
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/7
+ enable
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-2 VERIFY
+!-----------------------------------------------------------------------------
+show vlan 1240
+show vlan 2100
+show mac-address ethernet 1/1/7
+! Expect: the ports gone from the old VLANs, the 2100 ports untagged in 2100,
+! and each bounced port's MAC learned again (on 2100)
+! Then save:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-2 ROLLBACK (only if needed)
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 2100
+ no untagged ethernet 1/1/2 to 1/1/11
+ exit
+vlan 1240
+ untagged ethernet 1/1/2 to 1/1/11
+ exit
+end
+! Then run the PORT BOUNCE again and write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-2 PENDING - paste only after Trinity confirm
+!-----------------------------------------------------------------------------
+!   1/1/1    1240 -> 1         item 3: not the LT2-2 uplink (1/1/12); confirm no switch is to be connected
+configure terminal
+vlan 1240
+ no untagged ethernet 1/1/1
+ exit
+vlan 1212
+ no tagged ethernet 1/1/1
+ exit
+vlan 1213
+ no tagged ethernet 1/1/1
+ exit
+vlan 1230
+ no tagged ethernet 1/1/1
+ exit
+vlan 1250
+ no tagged ethernet 1/1/1
+ exit
+vlan 1271
+ no tagged ethernet 1/1/1
+ exit
+vlan 1272
+ no tagged ethernet 1/1/1
+ exit
+vlan 1273
+ no tagged ethernet 1/1/1
+ exit
+vlan 2000
+ no tagged ethernet 1/1/1
+ exit
+vlan 2010
+ no tagged ethernet 1/1/1
+ exit
+vlan 2020
+ no tagged ethernet 1/1/1
+ exit
+vlan 2100
+ no tagged ethernet 1/1/1
+ exit
+vlan 2200
+ no tagged ethernet 1/1/1
+ exit
+vlan 2300
+ no tagged ethernet 1/1/1
+ exit
+vlan 2310
+ no tagged ethernet 1/1/1
+ exit
+vlan 2320
+ no tagged ethernet 1/1/1
+ exit
+vlan 2400
+ no tagged ethernet 1/1/1
+ exit
+vlan 2500
+ no tagged ethernet 1/1/1
+ exit
+vlan 2510
+ no tagged ethernet 1/1/1
+ exit
+vlan 2520
+ no tagged ethernet 1/1/1
+ exit
+vlan 2530
+ no tagged ethernet 1/1/1
+ exit
+vlan 2600
+ no tagged ethernet 1/1/1
+ exit
+vlan 2700
+ no tagged ethernet 1/1/1
+ exit
+vlan 2800
+ no tagged ethernet 1/1/1
+ exit
+vlan 2810
+ no tagged ethernet 1/1/1
+ exit
+vlan 2900
+ no tagged ethernet 1/1/1
+ exit
+vlan 2950
+ no tagged ethernet 1/1/1
+ exit
+vlan 2951
+ no tagged ethernet 1/1/1
+ exit
+vlan 2952
+ no tagged ethernet 1/1/1
+ exit
+vlan 2953
+ no tagged ethernet 1/1/1
+ exit
+end
+! Verify with show vlan and show mac-address ethernet <port>, then write memory
+! Rollback:
+configure terminal
+vlan 1240
+ untagged ethernet 1/1/1
+ exit
+vlan 1212
+ tagged ethernet 1/1/1
+ exit
+vlan 1213
+ tagged ethernet 1/1/1
+ exit
+vlan 1230
+ tagged ethernet 1/1/1
+ exit
+vlan 1250
+ tagged ethernet 1/1/1
+ exit
+vlan 1271
+ tagged ethernet 1/1/1
+ exit
+vlan 1272
+ tagged ethernet 1/1/1
+ exit
+vlan 1273
+ tagged ethernet 1/1/1
+ exit
+vlan 2000
+ tagged ethernet 1/1/1
+ exit
+vlan 2010
+ tagged ethernet 1/1/1
+ exit
+vlan 2020
+ tagged ethernet 1/1/1
+ exit
+vlan 2100
+ tagged ethernet 1/1/1
+ exit
+vlan 2200
+ tagged ethernet 1/1/1
+ exit
+vlan 2300
+ tagged ethernet 1/1/1
+ exit
+vlan 2310
+ tagged ethernet 1/1/1
+ exit
+vlan 2320
+ tagged ethernet 1/1/1
+ exit
+vlan 2400
+ tagged ethernet 1/1/1
+ exit
+vlan 2500
+ tagged ethernet 1/1/1
+ exit
+vlan 2510
+ tagged ethernet 1/1/1
+ exit
+vlan 2520
+ tagged ethernet 1/1/1
+ exit
+vlan 2530
+ tagged ethernet 1/1/1
+ exit
+vlan 2600
+ tagged ethernet 1/1/1
+ exit
+vlan 2700
+ tagged ethernet 1/1/1
+ exit
+vlan 2800
+ tagged ethernet 1/1/1
+ exit
+vlan 2810
+ tagged ethernet 1/1/1
+ exit
+vlan 2900
+ tagged ethernet 1/1/1
+ exit
+vlan 2950
+ tagged ethernet 1/1/1
+ exit
+vlan 2951
+ tagged ethernet 1/1/1
+ exit
+vlan 2952
+ tagged ethernet 1/1/1
+ exit
+vlan 2953
+ tagged ethernet 1/1/1
+ exit
+end
+!
+
+!=============================================================================
+! switch-200V-LT2-3  (192.168.122.14)  -  10 ports
+!=============================================================================
+!
+! Port list (now untagged [tagged] -> new, link on 16 Oct, MAC seen)
+!   1/1/1    1240 [100] -> 2100        Down   (tagged removed)
+!   1/1/2    1240 [100] -> 2100        Down   (tagged removed)
+!   1/1/3    1240 [100] -> 2100        Down   (tagged removed)
+!   1/1/5    1240 [100] -> 2100        Down   (tagged removed)
+!   1/1/6    1240 [100] -> 2100        Down   (tagged removed)
+!   1/1/7    1240 [100] -> 2100        Down   (tagged removed)
+!   1/1/8    1240 [100] -> 2100        Down   (tagged removed)
+!   1/1/9    1240 [100] -> 2100        Down   (tagged removed)
+!   1/1/10   1240 [100] -> 2100        Down   (tagged removed)
+!   1/1/11   1240 [100] -> 2100        Down   (tagged removed)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-3 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+show vlan 100
+show vlan 1240
+show vlan 2100
+! Expect each port untagged in its 'now' VLAN (and tagged as listed)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-3 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 1240
+ no untagged ethernet 1/1/1 to 1/1/3
+ no untagged ethernet 1/1/5 to 1/1/11
+ exit
+vlan 2100
+ untagged ethernet 1/1/1 to 1/1/3
+ untagged ethernet 1/1/5 to 1/1/11
+ exit
+vlan 100
+ no tagged ethernet 1/1/1 to 1/1/3
+ no tagged ethernet 1/1/5 to 1/1/11
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-3 VERIFY
+!-----------------------------------------------------------------------------
+show vlan 100
+show vlan 1240
+show vlan 2100
+! Expect: the ports gone from the old VLANs, the 2100 ports untagged in 2100,
+! and each bounced port's MAC learned again (on 2100)
+! Then save:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-3 ROLLBACK (only if needed)
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 2100
+ no untagged ethernet 1/1/1 to 1/1/3
+ no untagged ethernet 1/1/5 to 1/1/11
+ exit
+vlan 1240
+ untagged ethernet 1/1/1 to 1/1/3
+ untagged ethernet 1/1/5 to 1/1/11
+ exit
+vlan 100
+ tagged ethernet 1/1/1 to 1/1/3
+ tagged ethernet 1/1/5 to 1/1/11
+ exit
+end
+! Then write memory
+
+!=============================================================================
+! switch-200V-Tutorial-6.03  (192.168.122.15)  -  1 port
+!=============================================================================
+!
+! Port list (now untagged [tagged] -> new, link on 16 Oct, MAC seen)
+!   1/1/11    100 -> 1 (default) Down  
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+show vlan 100
+! Expect each port untagged in its 'now' VLAN (and tagged as listed)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 100
+ no untagged ethernet 1/1/11
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 VERIFY
+!-----------------------------------------------------------------------------
+show vlan 100
+! Expect: the ports gone from the old VLANs, the 2100 ports untagged in 2100,
+! and each bounced port's MAC learned again (on 2100)
+! Then save:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 ROLLBACK (only if needed)
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 100
+ untagged ethernet 1/1/11
+ exit
+end
+! Then write memory
+
+!=============================================================================
+! switch-200V-8  (192.168.122.16)  -  7 ports + 3 pending
+!=============================================================================
+!
+! Port list (now untagged [tagged] -> new, link on 16 Oct, MAC seen)
+!   1/1/1    1240 -> 2100        Down  
+!   1/1/2    1240 -> 2100        Down  
+!   1/1/3    1240 -> 2100        Up    1C:1A:DF:C0:99:7F
+!   1/1/4    1240 -> 2100        Down  
+!   1/1/5    1240 -> 2100        Up    AC:B4:80:F1:61:27
+!   1/1/10   1240 -> 2100        Down  
+!   1/1/11   1240 -> 2100        Down  
+!
+!-----------------------------------------------------------------------------
+! switch-200V-8 PRE-CHECK (exec mode, read-only)
+!-----------------------------------------------------------------------------
+show vlan 1240
+show vlan 2100
+show mac-address ethernet 1/1/3
+show mac-address ethernet 1/1/5
+! Expect each port untagged in its 'now' VLAN (and tagged as listed)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-8 CHANGE
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 1240
+ no untagged ethernet 1/1/1 to 1/1/5
+ no untagged ethernet 1/1/10 to 1/1/11
+ exit
+vlan 2100
+ untagged ethernet 1/1/1 to 1/1/5
+ untagged ethernet 1/1/10 to 1/1/11
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-8 PORT BOUNCE (2 ports that were Up on 16 Oct)
+! Paste part 1, wait 10 seconds, then paste part 2
+!-----------------------------------------------------------------------------
+! Part 1
+configure terminal
+interface ethernet 1/1/3
+ disable
+ exit
+interface ethernet 1/1/5
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/3
+ enable
+ exit
+interface ethernet 1/1/5
+ enable
+ exit
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-8 VERIFY
+!-----------------------------------------------------------------------------
+show vlan 1240
+show vlan 2100
+show mac-address ethernet 1/1/3
+show mac-address ethernet 1/1/5
+! Expect: the ports gone from the old VLANs, the 2100 ports untagged in 2100,
+! and each bounced port's MAC learned again (on 2100)
+! Then save:
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-8 ROLLBACK (only if needed)
+!-----------------------------------------------------------------------------
+configure terminal
+vlan 2100
+ no untagged ethernet 1/1/1 to 1/1/5
+ no untagged ethernet 1/1/10 to 1/1/11
+ exit
+vlan 1240
+ untagged ethernet 1/1/1 to 1/1/5
+ untagged ethernet 1/1/10 to 1/1/11
+ exit
+end
+! Then run the PORT BOUNCE again and write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-8 PENDING - paste only after Trinity confirm
+!-----------------------------------------------------------------------------
+!   1/1/7    1240 -> 2000|2100 item 2: 00:09:F5:32:DB:15 (10.9.9.97), device type to confirm
+!   1/1/8    1240 -> 2000|2100 item 2: 00:09:F5:32:DB:D1 (10.9.9.96), device type to confirm
+!   1/1/9    1240 -> 2000|2100 item 2: 00:09:F5:32:DB:14 (10.9.9.95), device type to confirm
+! Option: VLAN 2000 (netmgmt, if UPS/PDU cards)
+configure terminal
+vlan 1240
+ no untagged ethernet 1/1/7 to 1/1/9
+ exit
+vlan 2000
+ untagged ethernet 1/1/7 to 1/1/9
+ exit
+end
+! Bounce:
+! Part 1
+configure terminal
+interface ethernet 1/1/7 to 1/1/9
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/7 to 1/1/9
+ enable
+ exit
+end
+! Verify with show vlan and show mac-address ethernet <port>, then write memory
+! Rollback:
+configure terminal
+vlan 2000
+ no untagged ethernet 1/1/7 to 1/1/9
+ exit
+vlan 1240
+ untagged ethernet 1/1/7 to 1/1/9
+ exit
+end
+!
+! Option: VLAN 2100 (staff, as Trinity recommended)
+configure terminal
+vlan 1240
+ no untagged ethernet 1/1/7 to 1/1/9
+ exit
+vlan 2100
+ untagged ethernet 1/1/7 to 1/1/9
+ exit
+end
+! Bounce:
+! Part 1
+configure terminal
+interface ethernet 1/1/7 to 1/1/9
+ disable
+ exit
+end
+! Part 2 (after 10 seconds)
+configure terminal
+interface ethernet 1/1/7 to 1/1/9
+ enable
+ exit
+end
+! Verify with show vlan and show mac-address ethernet <port>, then write memory
+! Rollback:
+configure terminal
+vlan 2100
+ no untagged ethernet 1/1/7 to 1/1/9
+ exit
+vlan 1240
+ untagged ethernet 1/1/7 to 1/1/9
+ exit
+end
+!
+
+!=============================================================================
+! OPTIONAL (only if Trinity ask): also shut the ports that go to VLAN 1, so
+! nothing plugged into them is live on the building-wide VLAN 1
+!=============================================================================
+! switch-200V-stack-lv3
+configure terminal
+interface ethernet 1/1/12
+ disable
+ exit
+interface ethernet 1/1/34
+ disable
+ exit
+interface ethernet 2/1/14
+ disable
+ exit
+interface ethernet 2/1/24
+ disable
+ exit
+interface ethernet 2/1/34
+ disable
+ exit
+interface ethernet 3/1/28
+ disable
+ exit
+interface ethernet 4/1/45
+ disable
+ exit
+interface ethernet 5/1/4 to 5/1/7
+ disable
+ exit
+interface ethernet 5/1/13
+ disable
+ exit
+interface ethernet 5/1/15
+ disable
+ exit
+interface ethernet 5/1/20
+ disable
+ exit
+interface ethernet 5/1/32
+ disable
+ exit
+interface ethernet 5/1/43
+ disable
+ exit
+end
+write memory
+! switch-200V-stack-lv4
+configure terminal
+interface ethernet 1/1/8
+ disable
+ exit
+interface ethernet 1/1/17
+ disable
+ exit
+interface ethernet 1/1/32
+ disable
+ exit
+interface ethernet 2/1/8
+ disable
+ exit
+interface ethernet 2/1/18
+ disable
+ exit
+interface ethernet 2/1/20
+ disable
+ exit
+interface ethernet 4/1/1 to 4/1/2
+ disable
+ exit
+interface ethernet 4/1/7
+ disable
+ exit
+interface ethernet 4/1/10
+ disable
+ exit
+interface ethernet 4/1/16 to 4/1/17
+ disable
+ exit
+interface ethernet 4/1/27 to 4/1/29
+ disable
+ exit
+interface ethernet 4/1/31
+ disable
+ exit
+interface ethernet 4/1/38 to 4/1/39
+ disable
+ exit
+interface ethernet 4/1/44
+ disable
+ exit
+interface ethernet 5/1/1 to 5/1/2
+ disable
+ exit
+interface ethernet 5/1/5
+ disable
+ exit
+interface ethernet 5/1/14
+ disable
+ exit
+interface ethernet 5/1/16
+ disable
+ exit
+interface ethernet 5/1/24
+ disable
+ exit
+interface ethernet 5/1/26
+ disable
+ exit
+interface ethernet 5/1/35
+ disable
+ exit
+interface ethernet 5/1/38
+ disable
+ exit
+interface ethernet 5/1/40
+ disable
+ exit
+interface ethernet 5/1/43
+ disable
+ exit
+interface ethernet 5/1/47
+ disable
+ exit
+end
+write memory
+! switch-200V-stack-lv6
+configure terminal
+interface ethernet 1/1/35
+ disable
+ exit
+interface ethernet 3/1/2
+ disable
+ exit
+interface ethernet 5/1/35
+ disable
+ exit
+interface ethernet 5/1/37
+ disable
+ exit
+interface ethernet 6/1/19
+ disable
+ exit
+interface ethernet 6/1/23
+ disable
+ exit
+interface ethernet 6/1/29
+ disable
+ exit
+interface ethernet 7/1/7
+ disable
+ exit
+interface ethernet 7/1/45
+ disable
+ exit
+end
+write memory
+! switch-200V-LT2-1
+configure terminal
+interface ethernet 1/1/2 to 1/1/3
+ disable
+ exit
+interface ethernet 1/1/19
+ disable
+ exit
+interface ethernet 1/1/22
+ disable
+ exit
+end
+write memory
+! switch-200V-Tutorial-6.03
+configure terminal
+interface ethernet 1/1/11
+ disable
+ exit
+end
+write memory
