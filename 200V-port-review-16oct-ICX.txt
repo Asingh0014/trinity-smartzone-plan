@@ -5,40 +5,38 @@
 !   Ports tab, column Q 'Trinity Recommendation'
 !=============================================================================
 !
-! Scope: 267 access ports on 8 switches (266 in the MAIN blocks, 1 in
-! PENDING blocks that wait for Trinity's answers)
-!   switch-200V-stack-lv3       192.168.122.22     32 main  0 pending
-!   switch-200V-stack-lv4       192.168.122.21     54 main  0 pending
-!   switch-200V-stack-lv6       192.168.122.11    144 main  0 pending
-!   switch-200V-LT2-1           192.168.122.12      5 main  0 pending
-!   switch-200V-LT2-2           192.168.122.13     10 main  1 pending
-!   switch-200V-LT2-3           192.168.122.14     10 main  0 pending
-!   switch-200V-Tutorial-6.03   192.168.122.15      1 main  0 pending
-!   switch-200V-8               192.168.122.16     10 main  0 pending
+! Scope: 267 access ports on 8 switches
+!   switch-200V-stack-lv3       192.168.122.22     32 ports
+!   switch-200V-stack-lv4       192.168.122.21     54 ports
+!   switch-200V-stack-lv6       192.168.122.11    144 ports
+!   switch-200V-LT2-1           192.168.122.12      5 ports
+!   switch-200V-LT2-2           192.168.122.13     11 ports
+!   switch-200V-LT2-3           192.168.122.14     10 ports
+!   switch-200V-Tutorial-6.03   192.168.122.15      1 port
+!   switch-200V-8               192.168.122.16     10 ports
 !
 ! What changes
 !      6  Remove VLAN trunk settings, set to default VLAN
 !     58  Remove VLAN, set to default VLAN
 !    173  Change access VLAN to VL-staff-wired-01 (2100)
 !     29  Change access VLAN to VL-staff-wired-01 (2100). Remove TRUNK VLANs
+!      1  Review if this is a link to a switch. If not, remove trunk VLAN and...
 !   'Default VLAN' is VLAN 1 (DEFAULT-VLAN). On ICX, removing a port's untagged
 !   VLAN returns it to VLAN 1, so there is no 'untagged' line for VLAN 1. VLAN 1
 !   has no IP address on the core (interface ve 1 is empty): a device plugged
 !   into one of these ports gets no network
 !   Decision 22 Oct: these ports stay enabled on VLAN 1 (not disabled)
 !
-! Changed from column Q after Trinity's answers of 22 Oct (in the MAIN blocks)
+! Changed from column Q by the decisions of 22 Oct
 !   200V-stack-lv3   2/1/27  -> 2100  item 1, Trinity 22 Oct: 20:7B:D2:30:98:C1 (200V3J14) to 2100
 !   200V-stack-lv4   4/1/32  -> 2100  item 1, Trinity 22 Oct: 20:7B:D2:30:99:15 (200V4H9) to 2100
 !   200V-stack-lv4   5/1/19  -> 2100  item 1, Trinity 22 Oct: 20:7B:D2:30:99:25 (200V4I17) to 2100
+!   200V-LT2-2       1/1/1   -> 1     item 3, decision 22 Oct: remove old VLANs only. Port becomes tagged-only with 2000 - 2953 (no untagged VLAN)
 !   200V-8           1/1/7   -> 2000  item 2, Trinity 22 Oct: UPS card 00:09:F5:32:DB:15 to 2000
 !   200V-8           1/1/8   -> 2000  item 2, Trinity 22 Oct: UPS card 00:09:F5:32:DB:D1 to 2000
 !   200V-8           1/1/9   -> 2000  item 2, Trinity 22 Oct: UPS card 00:09:F5:32:DB:14 to 2000
 !   The 3 UPS cards (10.9.9.95 - .97 on 1240) use DHCP: after the bounce they get
 !   new 10.21.0.x addresses. Check the leases on the DHCP server after the change
-!
-! PENDING (do not paste until Trinity confirm; see the email of 21 Oct)
-!   200V-LT2-2       1/1/1   -> 1         item 3: not the LT2-2 uplink (1/1/12); confirm no switch is to be connected
 !
 ! Before starting
 !   - The export is from 16 Oct. Run each switch's PRE-CHECK: every port in its
@@ -1389,10 +1387,12 @@ end
 ! Then run the PORT BOUNCE again and write memory
 
 !=============================================================================
-! switch-200V-LT2-2  (192.168.122.13)  -  10 ports + 1 pending
+! switch-200V-LT2-2  (192.168.122.13)  -  11 ports
 !=============================================================================
 !
 ! Port list (now untagged [tagged] -> new, link on 16 Oct, MAC seen)
+!   1/1/1    1240 [1212, 1213, 1230, 1250, 1271, 1272, 1273, 2000, 2010, 2020, 2100, 2200, 2300, 2310, 2320, 2400, 2500, 2510, 2520, 2530, 2600, 2700, 2800, 2810, 2900, 2950, 2951, 2952, 2953] -> 1 (default) Down   (tagged removed)
+!            item 3, decision 22 Oct: remove old VLANs only. Port becomes tagged-only with 2000 - 2953 (no untagged VLAN)
 !   1/1/2    1240 -> 2100        Down  
 !   1/1/3    1240 -> 2100        Down  
 !   1/1/4    1240 -> 2100        Down  
@@ -1407,7 +1407,14 @@ end
 !-----------------------------------------------------------------------------
 ! switch-200V-LT2-2 PRE-CHECK (exec mode, read-only)
 !-----------------------------------------------------------------------------
+show vlan 1212
+show vlan 1213
+show vlan 1230
 show vlan 1240
+show vlan 1250
+show vlan 1271
+show vlan 1272
+show vlan 1273
 show vlan 2100
 show mac-address ethernet 1/1/7
 ! Expect each port untagged in its 'now' VLAN (and tagged as listed)
@@ -1417,10 +1424,31 @@ show mac-address ethernet 1/1/7
 !-----------------------------------------------------------------------------
 configure terminal
 vlan 1240
- no untagged ethernet 1/1/2 to 1/1/11
+ no untagged ethernet 1/1/1 to 1/1/11
  exit
 vlan 2100
  untagged ethernet 1/1/2 to 1/1/11
+ exit
+vlan 1212
+ no tagged ethernet 1/1/1
+ exit
+vlan 1213
+ no tagged ethernet 1/1/1
+ exit
+vlan 1230
+ no tagged ethernet 1/1/1
+ exit
+vlan 1250
+ no tagged ethernet 1/1/1
+ exit
+vlan 1271
+ no tagged ethernet 1/1/1
+ exit
+vlan 1272
+ no tagged ethernet 1/1/1
+ exit
+vlan 1273
+ no tagged ethernet 1/1/1
  exit
 end
 !
@@ -1444,7 +1472,14 @@ end
 !-----------------------------------------------------------------------------
 ! switch-200V-LT2-2 VERIFY
 !-----------------------------------------------------------------------------
+show vlan 1212
+show vlan 1213
+show vlan 1230
 show vlan 1240
+show vlan 1250
+show vlan 1271
+show vlan 1272
+show vlan 1273
 show vlan 2100
 show mac-address ethernet 1/1/7
 ! Expect: the ports gone from the old VLANs, the 2100 ports untagged in 2100,
@@ -1460,202 +1495,31 @@ vlan 2100
  no untagged ethernet 1/1/2 to 1/1/11
  exit
 vlan 1240
- untagged ethernet 1/1/2 to 1/1/11
+ untagged ethernet 1/1/1 to 1/1/11
+ exit
+vlan 1212
+ tagged ethernet 1/1/1
+ exit
+vlan 1213
+ tagged ethernet 1/1/1
+ exit
+vlan 1230
+ tagged ethernet 1/1/1
+ exit
+vlan 1250
+ tagged ethernet 1/1/1
+ exit
+vlan 1271
+ tagged ethernet 1/1/1
+ exit
+vlan 1272
+ tagged ethernet 1/1/1
+ exit
+vlan 1273
+ tagged ethernet 1/1/1
  exit
 end
 ! Then run the PORT BOUNCE again and write memory
-!
-!-----------------------------------------------------------------------------
-! switch-200V-LT2-2 PENDING - paste only after Trinity confirm
-!-----------------------------------------------------------------------------
-!   1/1/1    1240 -> 1         item 3: not the LT2-2 uplink (1/1/12); confirm no switch is to be connected
-configure terminal
-vlan 1240
- no untagged ethernet 1/1/1
- exit
-vlan 1212
- no tagged ethernet 1/1/1
- exit
-vlan 1213
- no tagged ethernet 1/1/1
- exit
-vlan 1230
- no tagged ethernet 1/1/1
- exit
-vlan 1250
- no tagged ethernet 1/1/1
- exit
-vlan 1271
- no tagged ethernet 1/1/1
- exit
-vlan 1272
- no tagged ethernet 1/1/1
- exit
-vlan 1273
- no tagged ethernet 1/1/1
- exit
-vlan 2000
- no tagged ethernet 1/1/1
- exit
-vlan 2010
- no tagged ethernet 1/1/1
- exit
-vlan 2020
- no tagged ethernet 1/1/1
- exit
-vlan 2100
- no tagged ethernet 1/1/1
- exit
-vlan 2200
- no tagged ethernet 1/1/1
- exit
-vlan 2300
- no tagged ethernet 1/1/1
- exit
-vlan 2310
- no tagged ethernet 1/1/1
- exit
-vlan 2320
- no tagged ethernet 1/1/1
- exit
-vlan 2400
- no tagged ethernet 1/1/1
- exit
-vlan 2500
- no tagged ethernet 1/1/1
- exit
-vlan 2510
- no tagged ethernet 1/1/1
- exit
-vlan 2520
- no tagged ethernet 1/1/1
- exit
-vlan 2530
- no tagged ethernet 1/1/1
- exit
-vlan 2600
- no tagged ethernet 1/1/1
- exit
-vlan 2700
- no tagged ethernet 1/1/1
- exit
-vlan 2800
- no tagged ethernet 1/1/1
- exit
-vlan 2810
- no tagged ethernet 1/1/1
- exit
-vlan 2900
- no tagged ethernet 1/1/1
- exit
-vlan 2950
- no tagged ethernet 1/1/1
- exit
-vlan 2951
- no tagged ethernet 1/1/1
- exit
-vlan 2952
- no tagged ethernet 1/1/1
- exit
-vlan 2953
- no tagged ethernet 1/1/1
- exit
-end
-! Verify with show vlan and show mac-address ethernet <port>, then write memory
-! Rollback:
-configure terminal
-vlan 1240
- untagged ethernet 1/1/1
- exit
-vlan 1212
- tagged ethernet 1/1/1
- exit
-vlan 1213
- tagged ethernet 1/1/1
- exit
-vlan 1230
- tagged ethernet 1/1/1
- exit
-vlan 1250
- tagged ethernet 1/1/1
- exit
-vlan 1271
- tagged ethernet 1/1/1
- exit
-vlan 1272
- tagged ethernet 1/1/1
- exit
-vlan 1273
- tagged ethernet 1/1/1
- exit
-vlan 2000
- tagged ethernet 1/1/1
- exit
-vlan 2010
- tagged ethernet 1/1/1
- exit
-vlan 2020
- tagged ethernet 1/1/1
- exit
-vlan 2100
- tagged ethernet 1/1/1
- exit
-vlan 2200
- tagged ethernet 1/1/1
- exit
-vlan 2300
- tagged ethernet 1/1/1
- exit
-vlan 2310
- tagged ethernet 1/1/1
- exit
-vlan 2320
- tagged ethernet 1/1/1
- exit
-vlan 2400
- tagged ethernet 1/1/1
- exit
-vlan 2500
- tagged ethernet 1/1/1
- exit
-vlan 2510
- tagged ethernet 1/1/1
- exit
-vlan 2520
- tagged ethernet 1/1/1
- exit
-vlan 2530
- tagged ethernet 1/1/1
- exit
-vlan 2600
- tagged ethernet 1/1/1
- exit
-vlan 2700
- tagged ethernet 1/1/1
- exit
-vlan 2800
- tagged ethernet 1/1/1
- exit
-vlan 2810
- tagged ethernet 1/1/1
- exit
-vlan 2900
- tagged ethernet 1/1/1
- exit
-vlan 2950
- tagged ethernet 1/1/1
- exit
-vlan 2951
- tagged ethernet 1/1/1
- exit
-vlan 2952
- tagged ethernet 1/1/1
- exit
-vlan 2953
- tagged ethernet 1/1/1
- exit
-end
-!
 
 !=============================================================================
 ! switch-200V-LT2-3  (192.168.122.14)  -  10 ports
