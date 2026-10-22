@@ -28,8 +28,8 @@
 !     removed (it is still tagged on ports and the uplink)
 !
 ! Before starting
-!   - Trinity to confirm 10.21.0.20 - 10.21.0.27 are excluded from the DHCP scope
-!     for 10.21.0.0/24 on 10.20.16.10 / 10.20.16.11 (ve 2000 relays DHCP)
+!   - DONE: 10.21.0.20 - 10.21.0.27 are excluded from the 10.21.0.0/24 DHCP scope
+!     on 10.20.16.10 / 10.20.16.11 (confirmed by Trinity 22 Oct)
 !   - SRX (Sparx policy report): 10.21.0.0/24 is allowed to SmartZone
 !     (192.168.245.0/24, 192.168.81.0/24: TCP 22/443/8883/987, ICMP), SmartZone
 !     back to 10.21.0.0/24 (any), DNS 10.128.128.31/.60, public NTP and the
