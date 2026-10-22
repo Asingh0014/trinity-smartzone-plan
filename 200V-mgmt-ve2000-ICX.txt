@@ -1,0 +1,889 @@
+!=============================================================================
+! 200V access switches - move management from ve 100 to ve 2000 (VL-netmgmt-01)
+! Ruckus ICX, FastIron 10.0.10g
+!=============================================================================
+!
+! New addressing: VLAN 2000, 10.21.0.0/24, gateway 10.21.0.1 (trinity200V-core ve 2000)
+! trinity200V-core is not changed (its management stays on ve 1960, 10.20.8.2)
+!
+!   Switch                      Now (ve 100)      New (ve 2000)  
+!   switch-200V-stack-lv6       192.168.122.11/22 10.21.0.20/24  
+!   switch-200V-LT2-1           192.168.122.12/22 10.21.0.21/24  
+!   switch-200V-LT2-2           192.168.122.13/22 10.21.0.22/24  
+!   switch-200V-LT2-3           192.168.122.14/22 10.21.0.23/24  
+!   switch-200V-Tutorial-6.03   192.168.122.15/22 10.21.0.24/24  
+!   switch-200V-8               192.168.122.16/22 10.21.0.25/24  
+!   switch-200V-stack-lv4       192.168.122.21/22 10.21.0.26/24  
+!   switch-200V-stack-lv3       192.168.122.22/22 10.21.0.27/24  
+!
+! What changes on each switch
+!   - interface ve 2000 gets the new address
+!   - default route moves from 192.168.120.1 to 10.21.0.1
+!   - management source-interface ve 2000 protocol all, so every management
+!     protocol the switch originates (SSH/telnet client, SNMP traps, syslog,
+!     NTP, DNS, TFTP/SCP, RADIUS/TACACS) uses 10.21.0.x
+!   - the SmartZone connection (manager active-list) re-forms from 10.21.0.x
+!   - last step: the 192.168.122.x address is removed from ve 100, so the switch
+!     has no management address left on VLAN 100. VLAN 100 itself is not
+!     removed (it is still tagged on ports and the uplink)
+!
+! Before starting
+!   - Trinity to confirm 10.21.0.20 - 10.21.0.27 are excluded from the DHCP scope
+!     for 10.21.0.0/24 on 10.20.16.10 / 10.20.16.11 (ve 2000 relays DHCP)
+!   - SRX (Sparx policy report): 10.21.0.0/24 is allowed to SmartZone
+!     (192.168.245.0/24, 192.168.81.0/24: TCP 22/443/8883/987, ICMP), SmartZone
+!     back to 10.21.0.0/24 (any), DNS 10.128.128.31/.60, public NTP and the
+!     Internet. NOT in the report: SSH/telnet from the admin jump host
+!     (10.128.132.10) to 10.21.0.0/24, and SNMP to/from 10.128.240.12. Without
+!     those, the switches are reachable only through SmartZone or from the core
+!   - Work from a session on trinity200V-core: the core is directly connected to
+!     10.21.0.0/24 (ve 2000), so 'telnet 10.21.0.x' from the core keeps working
+!     while the switch's default route changes. A session to the old
+!     192.168.122.x address drops at STEP 3
+!   - Pilot on switch-200V-Tutorial-6.03 first (a single switch with few users),
+!     then the others
+!   - These ICX run the router image: while both ve 100 and ve 2000 have an
+!     address (STEP 1 to STEP 4) the switch can route between 192.168.120.0/22 and
+!     10.21.0.0/24. Keep that window short; STEP 4 ends it
+!
+! Per switch: PRE-CHECK > STEP 1 (add ve 2000) > STEP 2 (connect from core) >
+! STEP 3 (route + source interface) > VERIFY > write memory > STEP 4 (remove
+! 192.168.122.x, once SmartZone shows the switch on 10.21.0.x)
+!=============================================================================
+
+!=============================================================================
+! trinity200V-core PRE-CHECK (read-only)
+!=============================================================================
+show running-config interface ve 2000
+show vlan 2000
+ping 10.21.0.20
+ping 10.21.0.21
+ping 10.21.0.22
+ping 10.21.0.23
+ping 10.21.0.24
+ping 10.21.0.25
+ping 10.21.0.26
+ping 10.21.0.27
+! Expect: ve 2000 10.21.0.1/24, VLAN 2000 tagged on lag 1 to 6 and lag 10,
+! and NO reply from 10.21.0.20 - .27 (addresses free)
+
+!=============================================================================
+! switch-200V-stack-lv6  (192.168.122.11 -> 10.21.0.20)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 PRE-CHECK (on the switch, current session)
+!-----------------------------------------------------------------------------
+show running-config interface ve 100
+show running-config interface ve 2000
+show ip interface
+show ip route
+show running-config | include ip route|management source|ip dns|snmp-server host|logging host|manager active
+show vlan 2000
+show manager status
+! Expect: ve 100 192.168.122.11/22 is the only IP interface, default route 192.168.120.1,
+! VLAN 2000 tagged on the uplink, SmartZone connected. If another IP interface
+! shows (for example a DHCP-learned address), note it for STEP 4
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 STEP 1 - add ve 2000 (no impact)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 2000
+ port-name VE-netmgmt-01
+ ip address 10.21.0.20 255.255.255.0
+ exit
+end
+ping 10.21.0.1
+! Expect replies from 10.21.0.1. If not, stop: check VLAN 2000 on the uplink
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 STEP 2 - connect to the new address from the core
+!-----------------------------------------------------------------------------
+! On trinity200V-core:
+ping 10.21.0.20
+telnet 10.21.0.20
+! Log in and run STEP 3 in this session (it does not depend on the switch's
+! default route). Keep the old session open as a fallback until STEP 3 is done
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 STEP 3 - default route and management source (in the core-hop session)
+!-----------------------------------------------------------------------------
+configure terminal
+ip route 0.0.0.0/0 10.21.0.1
+no ip route 0.0.0.0/0 192.168.120.1
+no management source-interface ve 100 protocol all
+management source-interface ve 2000 protocol all
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 VERIFY
+!-----------------------------------------------------------------------------
+show ip route
+show running-config | include ip route|management source|ip dns
+ping 10.21.0.1
+ping 10.128.128.31
+ping 192.168.245.100
+show manager status
+! Expect: one default route via 10.21.0.1, management source ve 2000,
+! replies from 10.21.0.1, DNS and SmartZone. The SmartZone connection drops
+! and re-forms from the new address; allow up to 5 minutes, repeat
+! show manager status until it shows connected
+write memory
+show ntp associations
+! Expect the NTP server to become reachable within a few minutes (the SRX
+! allows 10.21.0.0/24 to the approved public NTP servers only; if
+! ntp1.trinity.unimelb.edu.au resolves to another address, NTP will fail)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 STEP 4 - remove the old address (after SmartZone shows 10.21.0.20)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 100
+ no ip address 192.168.122.11 255.255.252.0
+ exit
+end
+show ip interface
+! Expect: ve 2000 10.21.0.20 is the only IP interface. Remove any other address
+! noted in the PRE-CHECK the same way
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv6 ROLLBACK (only if needed; from the core-hop session)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 100
+ ip address 192.168.122.11 255.255.252.0
+ exit
+ip route 0.0.0.0/0 192.168.120.1
+no ip route 0.0.0.0/0 10.21.0.1
+no management source-interface ve 2000 protocol all
+management source-interface ve 100 protocol all
+end
+write memory
+! Then reconnect to 192.168.122.11 and remove ve 2000's address (this drops the core-hop session):
+configure terminal
+interface ve 2000
+ no ip address 10.21.0.20 255.255.255.0
+ exit
+end
+write memory
+
+!=============================================================================
+! switch-200V-LT2-1  (192.168.122.12 -> 10.21.0.21)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 PRE-CHECK (on the switch, current session)
+!-----------------------------------------------------------------------------
+show running-config interface ve 100
+show running-config interface ve 2000
+show ip interface
+show ip route
+show running-config | include ip route|management source|ip dns|snmp-server host|logging host|manager active
+show vlan 2000
+show manager status
+! Expect: ve 100 192.168.122.12/22 is the only IP interface, default route 192.168.120.1,
+! VLAN 2000 tagged on the uplink, SmartZone connected. If another IP interface
+! shows (for example a DHCP-learned address), note it for STEP 4
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 STEP 1 - add ve 2000 (no impact)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 2000
+ port-name VE-netmgmt-01
+ ip address 10.21.0.21 255.255.255.0
+ exit
+end
+ping 10.21.0.1
+! Expect replies from 10.21.0.1. If not, stop: check VLAN 2000 on the uplink
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 STEP 2 - connect to the new address from the core
+!-----------------------------------------------------------------------------
+! On trinity200V-core:
+ping 10.21.0.21
+telnet 10.21.0.21
+! Log in and run STEP 3 in this session (it does not depend on the switch's
+! default route). Keep the old session open as a fallback until STEP 3 is done
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 STEP 3 - default route and management source (in the core-hop session)
+!-----------------------------------------------------------------------------
+configure terminal
+ip route 0.0.0.0/0 10.21.0.1
+no ip route 0.0.0.0/0 192.168.120.1
+no management source-interface ve 100 protocol all
+management source-interface ve 2000 protocol all
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 VERIFY
+!-----------------------------------------------------------------------------
+show ip route
+show running-config | include ip route|management source|ip dns
+ping 10.21.0.1
+ping 10.128.128.31
+ping 192.168.245.100
+show manager status
+! Expect: one default route via 10.21.0.1, management source ve 2000,
+! replies from 10.21.0.1, DNS and SmartZone. The SmartZone connection drops
+! and re-forms from the new address; allow up to 5 minutes, repeat
+! show manager status until it shows connected
+write memory
+show ntp associations
+! Expect the NTP server to become reachable within a few minutes (the SRX
+! allows 10.21.0.0/24 to the approved public NTP servers only; if
+! ntp1.trinity.unimelb.edu.au resolves to another address, NTP will fail)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 STEP 4 - remove the old address (after SmartZone shows 10.21.0.21)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 100
+ no ip address 192.168.122.12 255.255.252.0
+ exit
+end
+show ip interface
+! Expect: ve 2000 10.21.0.21 is the only IP interface. Remove any other address
+! noted in the PRE-CHECK the same way
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-1 ROLLBACK (only if needed; from the core-hop session)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 100
+ ip address 192.168.122.12 255.255.252.0
+ exit
+ip route 0.0.0.0/0 192.168.120.1
+no ip route 0.0.0.0/0 10.21.0.1
+no management source-interface ve 2000 protocol all
+management source-interface ve 100 protocol all
+end
+write memory
+! Then reconnect to 192.168.122.12 and remove ve 2000's address (this drops the core-hop session):
+configure terminal
+interface ve 2000
+ no ip address 10.21.0.21 255.255.255.0
+ exit
+end
+write memory
+
+!=============================================================================
+! switch-200V-LT2-2  (192.168.122.13 -> 10.21.0.22)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-2 PRE-CHECK (on the switch, current session)
+!-----------------------------------------------------------------------------
+show running-config interface ve 100
+show running-config interface ve 2000
+show ip interface
+show ip route
+show running-config | include ip route|management source|ip dns|snmp-server host|logging host|manager active
+show vlan 2000
+show manager status
+! Expect: ve 100 192.168.122.13/22 is the only IP interface, default route 192.168.120.1,
+! VLAN 2000 tagged on the uplink, SmartZone connected. If another IP interface
+! shows (for example a DHCP-learned address), note it for STEP 4
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-2 STEP 1 - add ve 2000 (no impact)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 2000
+ port-name VE-netmgmt-01
+ ip address 10.21.0.22 255.255.255.0
+ exit
+end
+ping 10.21.0.1
+! Expect replies from 10.21.0.1. If not, stop: check VLAN 2000 on the uplink
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-2 STEP 2 - connect to the new address from the core
+!-----------------------------------------------------------------------------
+! On trinity200V-core:
+ping 10.21.0.22
+telnet 10.21.0.22
+! Log in and run STEP 3 in this session (it does not depend on the switch's
+! default route). Keep the old session open as a fallback until STEP 3 is done
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-2 STEP 3 - default route and management source (in the core-hop session)
+!-----------------------------------------------------------------------------
+configure terminal
+ip route 0.0.0.0/0 10.21.0.1
+no ip route 0.0.0.0/0 192.168.120.1
+no management source-interface ve 100 protocol all
+management source-interface ve 2000 protocol all
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-2 VERIFY
+!-----------------------------------------------------------------------------
+show ip route
+show running-config | include ip route|management source|ip dns
+ping 10.21.0.1
+ping 10.128.128.31
+ping 192.168.245.100
+show manager status
+! Expect: one default route via 10.21.0.1, management source ve 2000,
+! replies from 10.21.0.1, DNS and SmartZone. The SmartZone connection drops
+! and re-forms from the new address; allow up to 5 minutes, repeat
+! show manager status until it shows connected
+write memory
+show ntp associations
+! Expect the NTP server to become reachable within a few minutes (the SRX
+! allows 10.21.0.0/24 to the approved public NTP servers only; if
+! ntp1.trinity.unimelb.edu.au resolves to another address, NTP will fail)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-2 STEP 4 - remove the old address (after SmartZone shows 10.21.0.22)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 100
+ no ip address 192.168.122.13 255.255.252.0
+ exit
+end
+show ip interface
+! Expect: ve 2000 10.21.0.22 is the only IP interface. Remove any other address
+! noted in the PRE-CHECK the same way
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-2 ROLLBACK (only if needed; from the core-hop session)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 100
+ ip address 192.168.122.13 255.255.252.0
+ exit
+ip route 0.0.0.0/0 192.168.120.1
+no ip route 0.0.0.0/0 10.21.0.1
+no management source-interface ve 2000 protocol all
+management source-interface ve 100 protocol all
+end
+write memory
+! Then reconnect to 192.168.122.13 and remove ve 2000's address (this drops the core-hop session):
+configure terminal
+interface ve 2000
+ no ip address 10.21.0.22 255.255.255.0
+ exit
+end
+write memory
+
+!=============================================================================
+! switch-200V-LT2-3  (192.168.122.14 -> 10.21.0.23)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-3 PRE-CHECK (on the switch, current session)
+!-----------------------------------------------------------------------------
+show running-config interface ve 100
+show running-config interface ve 2000
+show ip interface
+show ip route
+show running-config | include ip route|management source|ip dns|snmp-server host|logging host|manager active
+show vlan 2000
+show manager status
+! Expect: ve 100 192.168.122.14/22 is the only IP interface, default route 192.168.120.1,
+! VLAN 2000 tagged on the uplink, SmartZone connected. If another IP interface
+! shows (for example a DHCP-learned address), note it for STEP 4
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-3 STEP 1 - add ve 2000 (no impact)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 2000
+ port-name VE-netmgmt-01
+ ip address 10.21.0.23 255.255.255.0
+ exit
+end
+ping 10.21.0.1
+! Expect replies from 10.21.0.1. If not, stop: check VLAN 2000 on the uplink
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-3 STEP 2 - connect to the new address from the core
+!-----------------------------------------------------------------------------
+! On trinity200V-core:
+ping 10.21.0.23
+telnet 10.21.0.23
+! Log in and run STEP 3 in this session (it does not depend on the switch's
+! default route). Keep the old session open as a fallback until STEP 3 is done
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-3 STEP 3 - default route and management source (in the core-hop session)
+!-----------------------------------------------------------------------------
+configure terminal
+ip route 0.0.0.0/0 10.21.0.1
+no ip route 0.0.0.0/0 192.168.120.1
+management source-interface ve 2000 protocol all
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-3 VERIFY
+!-----------------------------------------------------------------------------
+show ip route
+show running-config | include ip route|management source|ip dns
+ping 10.21.0.1
+ping 10.128.128.31
+ping 192.168.245.100
+show manager status
+! Expect: one default route via 10.21.0.1, management source ve 2000,
+! replies from 10.21.0.1, DNS and SmartZone. The SmartZone connection drops
+! and re-forms from the new address; allow up to 5 minutes, repeat
+! show manager status until it shows connected
+write memory
+show ntp associations
+! Expect the NTP server to become reachable within a few minutes (the SRX
+! allows 10.21.0.0/24 to the approved public NTP servers only; if
+! ntp1.trinity.unimelb.edu.au resolves to another address, NTP will fail)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-3 STEP 4 - remove the old address (after SmartZone shows 10.21.0.23)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 100
+ no ip address 192.168.122.14 255.255.252.0
+ exit
+end
+show ip interface
+! Expect: ve 2000 10.21.0.23 is the only IP interface. Remove any other address
+! noted in the PRE-CHECK the same way
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-LT2-3 ROLLBACK (only if needed; from the core-hop session)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 100
+ ip address 192.168.122.14 255.255.252.0
+ exit
+ip route 0.0.0.0/0 192.168.120.1
+no ip route 0.0.0.0/0 10.21.0.1
+no management source-interface ve 2000 protocol all
+end
+write memory
+! Then reconnect to 192.168.122.14 and remove ve 2000's address (this drops the core-hop session):
+configure terminal
+interface ve 2000
+ no ip address 10.21.0.23 255.255.255.0
+ exit
+end
+write memory
+
+!=============================================================================
+! switch-200V-Tutorial-6.03  (192.168.122.15 -> 10.21.0.24)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 PRE-CHECK (on the switch, current session)
+!-----------------------------------------------------------------------------
+show running-config interface ve 100
+show running-config interface ve 2000
+show ip interface
+show ip route
+show running-config | include ip route|management source|ip dns|snmp-server host|logging host|manager active
+show vlan 2000
+show manager status
+! Expect: ve 100 192.168.122.15/22 is the only IP interface, default route 192.168.120.1,
+! VLAN 2000 tagged on the uplink, SmartZone connected. If another IP interface
+! shows (for example a DHCP-learned address), note it for STEP 4
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 STEP 1 - add ve 2000 (no impact)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 2000
+ port-name VE-netmgmt-01
+ ip address 10.21.0.24 255.255.255.0
+ exit
+end
+ping 10.21.0.1
+! Expect replies from 10.21.0.1. If not, stop: check VLAN 2000 on the uplink
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 STEP 2 - connect to the new address from the core
+!-----------------------------------------------------------------------------
+! On trinity200V-core:
+ping 10.21.0.24
+telnet 10.21.0.24
+! Log in and run STEP 3 in this session (it does not depend on the switch's
+! default route). Keep the old session open as a fallback until STEP 3 is done
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 STEP 3 - default route and management source (in the core-hop session)
+!-----------------------------------------------------------------------------
+configure terminal
+ip route 0.0.0.0/0 10.21.0.1
+no ip route 0.0.0.0/0 192.168.120.1
+management source-interface ve 2000 protocol all
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 VERIFY
+!-----------------------------------------------------------------------------
+show ip route
+show running-config | include ip route|management source|ip dns
+ping 10.21.0.1
+ping 10.128.128.31
+ping 192.168.245.100
+show manager status
+! Expect: one default route via 10.21.0.1, management source ve 2000,
+! replies from 10.21.0.1, DNS and SmartZone. The SmartZone connection drops
+! and re-forms from the new address; allow up to 5 minutes, repeat
+! show manager status until it shows connected
+write memory
+show ntp associations
+! Expect the NTP server to become reachable within a few minutes (the SRX
+! allows 10.21.0.0/24 to the approved public NTP servers only; if
+! ntp1.trinity.unimelb.edu.au resolves to another address, NTP will fail)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 STEP 4 - remove the old address (after SmartZone shows 10.21.0.24)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 100
+ no ip address 192.168.122.15 255.255.252.0
+ exit
+end
+show ip interface
+! Expect: ve 2000 10.21.0.24 is the only IP interface. Remove any other address
+! noted in the PRE-CHECK the same way
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-Tutorial-6.03 ROLLBACK (only if needed; from the core-hop session)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 100
+ ip address 192.168.122.15 255.255.252.0
+ exit
+ip route 0.0.0.0/0 192.168.120.1
+no ip route 0.0.0.0/0 10.21.0.1
+no management source-interface ve 2000 protocol all
+end
+write memory
+! Then reconnect to 192.168.122.15 and remove ve 2000's address (this drops the core-hop session):
+configure terminal
+interface ve 2000
+ no ip address 10.21.0.24 255.255.255.0
+ exit
+end
+write memory
+
+!=============================================================================
+! switch-200V-8  (192.168.122.16 -> 10.21.0.25)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! switch-200V-8 PRE-CHECK (on the switch, current session)
+!-----------------------------------------------------------------------------
+show running-config interface ve 100
+show running-config interface ve 2000
+show ip interface
+show ip route
+show running-config | include ip route|management source|ip dns|snmp-server host|logging host|manager active
+show vlan 2000
+show manager status
+! Expect: ve 100 192.168.122.16/22 is the only IP interface, default route 192.168.120.1,
+! VLAN 2000 tagged on the uplink, SmartZone connected. If another IP interface
+! shows (for example a DHCP-learned address), note it for STEP 4
+!
+!-----------------------------------------------------------------------------
+! switch-200V-8 STEP 1 - add ve 2000 (no impact)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 2000
+ port-name VE-netmgmt-01
+ ip address 10.21.0.25 255.255.255.0
+ exit
+end
+ping 10.21.0.1
+! Expect replies from 10.21.0.1. If not, stop: check VLAN 2000 on the uplink
+!
+!-----------------------------------------------------------------------------
+! switch-200V-8 STEP 2 - connect to the new address from the core
+!-----------------------------------------------------------------------------
+! On trinity200V-core:
+ping 10.21.0.25
+telnet 10.21.0.25
+! Log in and run STEP 3 in this session (it does not depend on the switch's
+! default route). Keep the old session open as a fallback until STEP 3 is done
+!
+!-----------------------------------------------------------------------------
+! switch-200V-8 STEP 3 - default route and management source (in the core-hop session)
+!-----------------------------------------------------------------------------
+configure terminal
+ip route 0.0.0.0/0 10.21.0.1
+no ip route 0.0.0.0/0 192.168.120.1
+no management source-interface ve 100 protocol all
+management source-interface ve 2000 protocol all
+! switch-200V-8 has no DNS server configured (it cannot resolve the NTP
+! server name); add the same DNS servers as the other switches:
+ip dns server-address 10.128.128.31 10.128.128.60
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-8 VERIFY
+!-----------------------------------------------------------------------------
+show ip route
+show running-config | include ip route|management source|ip dns
+ping 10.21.0.1
+ping 10.128.128.31
+ping 192.168.245.100
+show manager status
+! Expect: one default route via 10.21.0.1, management source ve 2000,
+! replies from 10.21.0.1, DNS and SmartZone. The SmartZone connection drops
+! and re-forms from the new address; allow up to 5 minutes, repeat
+! show manager status until it shows connected
+write memory
+show ntp associations
+! Expect the NTP server to become reachable within a few minutes (the SRX
+! allows 10.21.0.0/24 to the approved public NTP servers only; if
+! ntp1.trinity.unimelb.edu.au resolves to another address, NTP will fail)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-8 STEP 4 - remove the old address (after SmartZone shows 10.21.0.25)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 100
+ no ip address 192.168.122.16 255.255.252.0
+ exit
+end
+show ip interface
+! Expect: ve 2000 10.21.0.25 is the only IP interface. Remove any other address
+! noted in the PRE-CHECK the same way
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-8 ROLLBACK (only if needed; from the core-hop session)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 100
+ ip address 192.168.122.16 255.255.252.0
+ exit
+ip route 0.0.0.0/0 192.168.120.1
+no ip route 0.0.0.0/0 10.21.0.1
+no management source-interface ve 2000 protocol all
+management source-interface ve 100 protocol all
+end
+write memory
+! Then reconnect to 192.168.122.16 and remove ve 2000's address (this drops the core-hop session):
+configure terminal
+interface ve 2000
+ no ip address 10.21.0.25 255.255.255.0
+ exit
+end
+write memory
+
+!=============================================================================
+! switch-200V-stack-lv4  (192.168.122.21 -> 10.21.0.26)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 PRE-CHECK (on the switch, current session)
+!-----------------------------------------------------------------------------
+show running-config interface ve 100
+show running-config interface ve 2000
+show ip interface
+show ip route
+show running-config | include ip route|management source|ip dns|snmp-server host|logging host|manager active
+show vlan 2000
+show manager status
+! Expect: ve 100 192.168.122.21/22 is the only IP interface, default route 192.168.120.1,
+! VLAN 2000 tagged on the uplink, SmartZone connected. If another IP interface
+! shows (for example a DHCP-learned address), note it for STEP 4
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 STEP 1 - add ve 2000 (no impact)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 2000
+ port-name VE-netmgmt-01
+ ip address 10.21.0.26 255.255.255.0
+ exit
+end
+ping 10.21.0.1
+! Expect replies from 10.21.0.1. If not, stop: check VLAN 2000 on the uplink
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 STEP 2 - connect to the new address from the core
+!-----------------------------------------------------------------------------
+! On trinity200V-core:
+ping 10.21.0.26
+telnet 10.21.0.26
+! Log in and run STEP 3 in this session (it does not depend on the switch's
+! default route). Keep the old session open as a fallback until STEP 3 is done
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 STEP 3 - default route and management source (in the core-hop session)
+!-----------------------------------------------------------------------------
+configure terminal
+ip route 0.0.0.0/0 10.21.0.1
+no ip route 0.0.0.0/0 192.168.120.1
+management source-interface ve 2000 protocol all
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 VERIFY
+!-----------------------------------------------------------------------------
+show ip route
+show running-config | include ip route|management source|ip dns
+ping 10.21.0.1
+ping 10.128.128.31
+ping 192.168.245.100
+show manager status
+! Expect: one default route via 10.21.0.1, management source ve 2000,
+! replies from 10.21.0.1, DNS and SmartZone. The SmartZone connection drops
+! and re-forms from the new address; allow up to 5 minutes, repeat
+! show manager status until it shows connected
+write memory
+show ntp associations
+! Expect the NTP server to become reachable within a few minutes (the SRX
+! allows 10.21.0.0/24 to the approved public NTP servers only; if
+! ntp1.trinity.unimelb.edu.au resolves to another address, NTP will fail)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 STEP 4 - remove the old address (after SmartZone shows 10.21.0.26)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 100
+ no ip address 192.168.122.21 255.255.252.0
+ exit
+end
+show ip interface
+! Expect: ve 2000 10.21.0.26 is the only IP interface. Remove any other address
+! noted in the PRE-CHECK the same way
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv4 ROLLBACK (only if needed; from the core-hop session)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 100
+ ip address 192.168.122.21 255.255.252.0
+ exit
+ip route 0.0.0.0/0 192.168.120.1
+no ip route 0.0.0.0/0 10.21.0.1
+no management source-interface ve 2000 protocol all
+end
+write memory
+! Then reconnect to 192.168.122.21 and remove ve 2000's address (this drops the core-hop session):
+configure terminal
+interface ve 2000
+ no ip address 10.21.0.26 255.255.255.0
+ exit
+end
+write memory
+
+!=============================================================================
+! switch-200V-stack-lv3  (192.168.122.22 -> 10.21.0.27)
+!=============================================================================
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 PRE-CHECK (on the switch, current session)
+!-----------------------------------------------------------------------------
+show running-config interface ve 100
+show running-config interface ve 2000
+show ip interface
+show ip route
+show running-config | include ip route|management source|ip dns|snmp-server host|logging host|manager active
+show vlan 2000
+show manager status
+! Expect: ve 100 192.168.122.22/22 is the only IP interface, default route 192.168.120.1,
+! VLAN 2000 tagged on the uplink, SmartZone connected. If another IP interface
+! shows (for example a DHCP-learned address), note it for STEP 4
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 STEP 1 - add ve 2000 (no impact)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 2000
+ port-name VE-netmgmt-01
+ ip address 10.21.0.27 255.255.255.0
+ exit
+end
+ping 10.21.0.1
+! Expect replies from 10.21.0.1. If not, stop: check VLAN 2000 on the uplink
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 STEP 2 - connect to the new address from the core
+!-----------------------------------------------------------------------------
+! On trinity200V-core:
+ping 10.21.0.27
+telnet 10.21.0.27
+! Log in and run STEP 3 in this session (it does not depend on the switch's
+! default route). Keep the old session open as a fallback until STEP 3 is done
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 STEP 3 - default route and management source (in the core-hop session)
+!-----------------------------------------------------------------------------
+configure terminal
+ip route 0.0.0.0/0 10.21.0.1
+no ip route 0.0.0.0/0 192.168.120.1
+no management source-interface ve 100 protocol all
+management source-interface ve 2000 protocol all
+end
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 VERIFY
+!-----------------------------------------------------------------------------
+show ip route
+show running-config | include ip route|management source|ip dns
+ping 10.21.0.1
+ping 10.128.128.31
+ping 192.168.245.100
+show manager status
+! Expect: one default route via 10.21.0.1, management source ve 2000,
+! replies from 10.21.0.1, DNS and SmartZone. The SmartZone connection drops
+! and re-forms from the new address; allow up to 5 minutes, repeat
+! show manager status until it shows connected
+write memory
+show ntp associations
+! Expect the NTP server to become reachable within a few minutes (the SRX
+! allows 10.21.0.0/24 to the approved public NTP servers only; if
+! ntp1.trinity.unimelb.edu.au resolves to another address, NTP will fail)
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 STEP 4 - remove the old address (after SmartZone shows 10.21.0.27)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 100
+ no ip address 192.168.122.22 255.255.252.0
+ exit
+end
+show ip interface
+! Expect: ve 2000 10.21.0.27 is the only IP interface. Remove any other address
+! noted in the PRE-CHECK the same way
+write memory
+!
+!-----------------------------------------------------------------------------
+! switch-200V-stack-lv3 ROLLBACK (only if needed; from the core-hop session)
+!-----------------------------------------------------------------------------
+configure terminal
+interface ve 100
+ ip address 192.168.122.22 255.255.252.0
+ exit
+ip route 0.0.0.0/0 192.168.120.1
+no ip route 0.0.0.0/0 10.21.0.1
+no management source-interface ve 2000 protocol all
+management source-interface ve 100 protocol all
+end
+write memory
+! Then reconnect to 192.168.122.22 and remove ve 2000's address (this drops the core-hop session):
+configure terminal
+interface ve 2000
+ no ip address 10.21.0.27 255.255.255.0
+ exit
+end
+write memory
+
+!=============================================================================
+! AFTER ALL SWITCHES
+!=============================================================================
+! - SmartZone: all 8 switches online with their 10.21.0.x address
+! - Update the device list, the SNMP monitoring (10.128.240.12) and any jump-host
+!   or documentation entries from 192.168.122.x to 10.21.0.x
+! - VLAN 100 and its ve 100 interface stay until the legacy VLAN clean-up
