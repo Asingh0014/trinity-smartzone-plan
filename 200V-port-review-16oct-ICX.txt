@@ -5,35 +5,39 @@
 !   Ports tab, column Q 'Trinity Recommendation'
 !=============================================================================
 !
-! Scope: 267 access ports on 8 switches (260 in the MAIN blocks, 7 in
+! Scope: 267 access ports on 8 switches (266 in the MAIN blocks, 1 in
 ! PENDING blocks that wait for Trinity's answers)
-!   switch-200V-stack-lv3       192.168.122.22     31 main  1 pending
-!   switch-200V-stack-lv4       192.168.122.21     52 main  2 pending
+!   switch-200V-stack-lv3       192.168.122.22     32 main  0 pending
+!   switch-200V-stack-lv4       192.168.122.21     54 main  0 pending
 !   switch-200V-stack-lv6       192.168.122.11    144 main  0 pending
 !   switch-200V-LT2-1           192.168.122.12      5 main  0 pending
 !   switch-200V-LT2-2           192.168.122.13     10 main  1 pending
 !   switch-200V-LT2-3           192.168.122.14     10 main  0 pending
 !   switch-200V-Tutorial-6.03   192.168.122.15      1 main  0 pending
-!   switch-200V-8               192.168.122.16      7 main  3 pending
+!   switch-200V-8               192.168.122.16     10 main  0 pending
 !
 ! What changes
 !      6  Remove VLAN trunk settings, set to default VLAN
-!     55  Remove VLAN, set to default VLAN
-!    170  Change access VLAN to VL-staff-wired-01 (2100)
+!     58  Remove VLAN, set to default VLAN
+!    173  Change access VLAN to VL-staff-wired-01 (2100)
 !     29  Change access VLAN to VL-staff-wired-01 (2100). Remove TRUNK VLANs
 !   'Default VLAN' is VLAN 1 (DEFAULT-VLAN). On ICX, removing a port's untagged
 !   VLAN returns it to VLAN 1, so there is no 'untagged' line for VLAN 1. VLAN 1
 !   has no IP address on the core (interface ve 1 is empty): a device plugged
 !   into one of these ports gets no network
 !
+! Changed from column Q after Trinity's answers of 22 Oct (in the MAIN blocks)
+!   200V-stack-lv3   2/1/27  -> 2100  item 1, Trinity 22 Oct: 20:7B:D2:30:98:C1 (200V3J14) to 2100
+!   200V-stack-lv4   4/1/32  -> 2100  item 1, Trinity 22 Oct: 20:7B:D2:30:99:15 (200V4H9) to 2100
+!   200V-stack-lv4   5/1/19  -> 2100  item 1, Trinity 22 Oct: 20:7B:D2:30:99:25 (200V4I17) to 2100
+!   200V-8           1/1/7   -> 2000  item 2, Trinity 22 Oct: UPS card 00:09:F5:32:DB:15 to 2000
+!   200V-8           1/1/8   -> 2000  item 2, Trinity 22 Oct: UPS card 00:09:F5:32:DB:D1 to 2000
+!   200V-8           1/1/9   -> 2000  item 2, Trinity 22 Oct: UPS card 00:09:F5:32:DB:14 to 2000
+!   The 3 UPS cards had 10.9.9.95 - .97 on 1240. On 2000 they need DHCP (or a
+!   fixed 10.21.0.x address outside .20 - .27) before they are reachable again
+!
 ! PENDING (do not paste until Trinity confirm; see the email of 21 Oct)
-!   stack-lv3        2/1/27  -> 2100      item 1: 20:7B:D2:30:98:C1 (200V3J14) seen 15 Oct; Trinity said default VLAN
-!   stack-lv4        4/1/32  -> 2100      item 1: 20:7B:D2:30:99:15 (200V4H9) seen 14 Oct; Trinity said default VLAN
-!   stack-lv4        5/1/19  -> 2100      item 1: 20:7B:D2:30:99:25 (200V4I17) seen 14 Oct; Trinity said default VLAN
-!   LT2-2            1/1/1   -> 1         item 3: not the LT2-2 uplink (1/1/12); confirm no switch is to be connected
-!   8                1/1/7   -> 2000|2100 item 2: 00:09:F5:32:DB:15 (10.9.9.97), device type to confirm
-!   8                1/1/8   -> 2000|2100 item 2: 00:09:F5:32:DB:D1 (10.9.9.96), device type to confirm
-!   8                1/1/9   -> 2000|2100 item 2: 00:09:F5:32:DB:14 (10.9.9.95), device type to confirm
+!   200V-LT2-2       1/1/1   -> 1         item 3: not the LT2-2 uplink (1/1/12); confirm no switch is to be connected
 !
 ! Before starting
 !   - The export is from 16 Oct. Run each switch's PRE-CHECK: every port in its
@@ -50,7 +54,7 @@
 !=============================================================================
 
 !=============================================================================
-! switch-200V-stack-lv3  (192.168.122.22)  -  31 ports + 1 pending
+! switch-200V-stack-lv3  (192.168.122.22)  -  32 ports
 !=============================================================================
 !
 ! Port list (now untagged [tagged] -> new, link on 16 Oct, MAC seen)
@@ -58,6 +62,8 @@
 !   1/1/34   1230 -> 1 (default) Down  
 !   2/1/14   1230 -> 1 (default) Down  
 !   2/1/24   1230 -> 1 (default) Down  
+!   2/1/27   1230 -> 2100        Down  
+!            item 1, Trinity 22 Oct: 20:7B:D2:30:98:C1 (200V3J14) to 2100
 !   2/1/34   1230 -> 1 (default) Down  
 !   3/1/3    1240 -> 2100        Down  
 !   3/1/7    1240 -> 2100        Down  
@@ -118,6 +124,7 @@ vlan 1230
  no untagged ethernet 1/1/34
  no untagged ethernet 2/1/14
  no untagged ethernet 2/1/24
+ no untagged ethernet 2/1/27
  no untagged ethernet 2/1/34
  no untagged ethernet 4/1/45
  no untagged ethernet 5/1/4 to 5/1/7
@@ -139,6 +146,7 @@ vlan 1240
  no untagged ethernet 4/1/23 to 4/1/27
  exit
 vlan 2100
+ untagged ethernet 2/1/27
  untagged ethernet 3/1/3
  untagged ethernet 3/1/7
  untagged ethernet 3/1/10 to 3/1/11
@@ -224,6 +232,7 @@ write memory
 !-----------------------------------------------------------------------------
 configure terminal
 vlan 2100
+ no untagged ethernet 2/1/27
  no untagged ethernet 3/1/3
  no untagged ethernet 3/1/7
  no untagged ethernet 3/1/10 to 3/1/11
@@ -244,6 +253,7 @@ vlan 1230
  untagged ethernet 1/1/34
  untagged ethernet 2/1/14
  untagged ethernet 2/1/24
+ untagged ethernet 2/1/27
  untagged ethernet 2/1/34
  untagged ethernet 4/1/45
  untagged ethernet 5/1/4 to 5/1/7
@@ -290,33 +300,9 @@ vlan 1273
  exit
 end
 ! Then run the PORT BOUNCE again and write memory
-!
-!-----------------------------------------------------------------------------
-! switch-200V-stack-lv3 PENDING - paste only after Trinity confirm
-!-----------------------------------------------------------------------------
-!   2/1/27   1230 -> 2100      item 1: 20:7B:D2:30:98:C1 (200V3J14) seen 15 Oct; Trinity said default VLAN
-configure terminal
-vlan 1230
- no untagged ethernet 2/1/27
- exit
-vlan 2100
- untagged ethernet 2/1/27
- exit
-end
-! Verify with show vlan and show mac-address ethernet <port>, then write memory
-! Rollback:
-configure terminal
-vlan 2100
- no untagged ethernet 2/1/27
- exit
-vlan 1230
- untagged ethernet 2/1/27
- exit
-end
-!
 
 !=============================================================================
-! switch-200V-stack-lv4  (192.168.122.21)  -  52 ports + 2 pending
+! switch-200V-stack-lv4  (192.168.122.21)  -  54 ports
 !=============================================================================
 !
 ! Port list (now untagged [tagged] -> new, link on 16 Oct, MAC seen)
@@ -357,6 +343,8 @@ end
 !   4/1/28   1230 -> 1 (default) Down  
 !   4/1/29   1230 -> 1 (default) Down  
 !   4/1/31   1230 -> 1 (default) Down  
+!   4/1/32   1272 -> 2100        Down  
+!            item 1, Trinity 22 Oct: 20:7B:D2:30:99:15 (200V4H9) to 2100
 !   4/1/38   1230 -> 1 (default) Down  
 !   4/1/39   1230 -> 1 (default) Down  
 !   4/1/44   1230 -> 1 (default) Down  
@@ -365,6 +353,8 @@ end
 !   5/1/5    1230 -> 1 (default) Down  
 !   5/1/14   1230 -> 1 (default) Down  
 !   5/1/16   1230 -> 1 (default) Down  
+!   5/1/19   1272 -> 2100        Down  
+!            item 1, Trinity 22 Oct: 20:7B:D2:30:99:25 (200V4I17) to 2100
 !   5/1/24   1230 -> 1 (default) Down  
 !   5/1/26   1230 -> 1 (default) Down  
 !   5/1/35   1230 -> 1 (default) Down  
@@ -445,6 +435,10 @@ vlan 1240
  no untagged ethernet 3/1/45
  no untagged ethernet 3/1/47 to 3/1/48
  exit
+vlan 1272
+ no untagged ethernet 4/1/32
+ no untagged ethernet 5/1/19
+ exit
 vlan 2100
  untagged ethernet 3/1/4 to 3/1/5
  untagged ethernet 3/1/9
@@ -459,6 +453,8 @@ vlan 2100
  untagged ethernet 3/1/42 to 3/1/43
  untagged ethernet 3/1/45
  untagged ethernet 3/1/47 to 3/1/48
+ untagged ethernet 4/1/32
+ untagged ethernet 5/1/19
  exit
 vlan 1272
  no tagged ethernet 1/1/8
@@ -564,6 +560,8 @@ vlan 2100
  no untagged ethernet 3/1/42 to 3/1/43
  no untagged ethernet 3/1/45
  no untagged ethernet 3/1/47 to 3/1/48
+ no untagged ethernet 4/1/32
+ no untagged ethernet 5/1/19
  exit
 vlan 100
  untagged ethernet 1/1/8
@@ -612,6 +610,10 @@ vlan 1240
  untagged ethernet 3/1/47 to 3/1/48
  exit
 vlan 1272
+ untagged ethernet 4/1/32
+ untagged ethernet 5/1/19
+ exit
+vlan 1272
  tagged ethernet 1/1/8
  exit
 vlan 1273
@@ -637,35 +639,6 @@ vlan 2900
  exit
 end
 ! Then run the PORT BOUNCE again and write memory
-!
-!-----------------------------------------------------------------------------
-! switch-200V-stack-lv4 PENDING - paste only after Trinity confirm
-!-----------------------------------------------------------------------------
-!   4/1/32   1272 -> 2100      item 1: 20:7B:D2:30:99:15 (200V4H9) seen 14 Oct; Trinity said default VLAN
-!   5/1/19   1272 -> 2100      item 1: 20:7B:D2:30:99:25 (200V4I17) seen 14 Oct; Trinity said default VLAN
-configure terminal
-vlan 1272
- no untagged ethernet 4/1/32
- no untagged ethernet 5/1/19
- exit
-vlan 2100
- untagged ethernet 4/1/32
- untagged ethernet 5/1/19
- exit
-end
-! Verify with show vlan and show mac-address ethernet <port>, then write memory
-! Rollback:
-configure terminal
-vlan 2100
- no untagged ethernet 4/1/32
- no untagged ethernet 5/1/19
- exit
-vlan 1272
- untagged ethernet 4/1/32
- untagged ethernet 5/1/19
- exit
-end
-!
 
 !=============================================================================
 ! switch-200V-stack-lv6  (192.168.122.11)  -  144 ports
@@ -1797,7 +1770,7 @@ end
 ! Then write memory
 
 !=============================================================================
-! switch-200V-8  (192.168.122.16)  -  7 ports + 3 pending
+! switch-200V-8  (192.168.122.16)  -  10 ports
 !=============================================================================
 !
 ! Port list (now untagged [tagged] -> new, link on 16 Oct, MAC seen)
@@ -1806,6 +1779,12 @@ end
 !   1/1/3    1240 -> 2100        Up    1C:1A:DF:C0:99:7F
 !   1/1/4    1240 -> 2100        Down  
 !   1/1/5    1240 -> 2100        Up    AC:B4:80:F1:61:27
+!   1/1/7    1240 -> 2000        Up    00:09:F5:32:DB:15
+!            item 2, Trinity 22 Oct: UPS card 00:09:F5:32:DB:15 to 2000
+!   1/1/8    1240 -> 2000        Up    00:09:F5:32:DB:D1
+!            item 2, Trinity 22 Oct: UPS card 00:09:F5:32:DB:D1 to 2000
+!   1/1/9    1240 -> 2000        Up    00:09:F5:32:DB:14
+!            item 2, Trinity 22 Oct: UPS card 00:09:F5:32:DB:14 to 2000
 !   1/1/10   1240 -> 2100        Down  
 !   1/1/11   1240 -> 2100        Down  
 !
@@ -1813,9 +1792,13 @@ end
 ! switch-200V-8 PRE-CHECK (exec mode, read-only)
 !-----------------------------------------------------------------------------
 show vlan 1240
+show vlan 2000
 show vlan 2100
 show mac-address ethernet 1/1/3
 show mac-address ethernet 1/1/5
+show mac-address ethernet 1/1/7
+show mac-address ethernet 1/1/8
+show mac-address ethernet 1/1/9
 ! Expect each port untagged in its 'now' VLAN (and tagged as listed)
 !
 !-----------------------------------------------------------------------------
@@ -1824,7 +1807,10 @@ show mac-address ethernet 1/1/5
 configure terminal
 vlan 1240
  no untagged ethernet 1/1/1 to 1/1/5
- no untagged ethernet 1/1/10 to 1/1/11
+ no untagged ethernet 1/1/7 to 1/1/11
+ exit
+vlan 2000
+ untagged ethernet 1/1/7 to 1/1/9
  exit
 vlan 2100
  untagged ethernet 1/1/1 to 1/1/5
@@ -1833,7 +1819,7 @@ vlan 2100
 end
 !
 !-----------------------------------------------------------------------------
-! switch-200V-8 PORT BOUNCE (2 ports that were Up on 16 Oct)
+! switch-200V-8 PORT BOUNCE (5 ports that were Up on 16 Oct)
 ! Paste part 1, wait 10 seconds, then paste part 2
 !-----------------------------------------------------------------------------
 ! Part 1
@@ -1844,6 +1830,9 @@ interface ethernet 1/1/3
 interface ethernet 1/1/5
  disable
  exit
+interface ethernet 1/1/7 to 1/1/9
+ disable
+ exit
 end
 ! Part 2 (after 10 seconds)
 configure terminal
@@ -1853,15 +1842,22 @@ interface ethernet 1/1/3
 interface ethernet 1/1/5
  enable
  exit
+interface ethernet 1/1/7 to 1/1/9
+ enable
+ exit
 end
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-8 VERIFY
 !-----------------------------------------------------------------------------
 show vlan 1240
+show vlan 2000
 show vlan 2100
 show mac-address ethernet 1/1/3
 show mac-address ethernet 1/1/5
+show mac-address ethernet 1/1/7
+show mac-address ethernet 1/1/8
+show mac-address ethernet 1/1/9
 ! Expect: the ports gone from the old VLANs, the 2100 ports untagged in 2100,
 ! and each bounced port's MAC learned again (on 2100)
 ! Then save:
@@ -1871,89 +1867,19 @@ write memory
 ! switch-200V-8 ROLLBACK (only if needed)
 !-----------------------------------------------------------------------------
 configure terminal
+vlan 2000
+ no untagged ethernet 1/1/7 to 1/1/9
+ exit
 vlan 2100
  no untagged ethernet 1/1/1 to 1/1/5
  no untagged ethernet 1/1/10 to 1/1/11
  exit
 vlan 1240
  untagged ethernet 1/1/1 to 1/1/5
- untagged ethernet 1/1/10 to 1/1/11
+ untagged ethernet 1/1/7 to 1/1/11
  exit
 end
 ! Then run the PORT BOUNCE again and write memory
-!
-!-----------------------------------------------------------------------------
-! switch-200V-8 PENDING - paste only after Trinity confirm
-!-----------------------------------------------------------------------------
-!   1/1/7    1240 -> 2000|2100 item 2: 00:09:F5:32:DB:15 (10.9.9.97), device type to confirm
-!   1/1/8    1240 -> 2000|2100 item 2: 00:09:F5:32:DB:D1 (10.9.9.96), device type to confirm
-!   1/1/9    1240 -> 2000|2100 item 2: 00:09:F5:32:DB:14 (10.9.9.95), device type to confirm
-! Option: VLAN 2000 (netmgmt, if UPS/PDU cards)
-configure terminal
-vlan 1240
- no untagged ethernet 1/1/7 to 1/1/9
- exit
-vlan 2000
- untagged ethernet 1/1/7 to 1/1/9
- exit
-end
-! Bounce:
-! Part 1
-configure terminal
-interface ethernet 1/1/7 to 1/1/9
- disable
- exit
-end
-! Part 2 (after 10 seconds)
-configure terminal
-interface ethernet 1/1/7 to 1/1/9
- enable
- exit
-end
-! Verify with show vlan and show mac-address ethernet <port>, then write memory
-! Rollback:
-configure terminal
-vlan 2000
- no untagged ethernet 1/1/7 to 1/1/9
- exit
-vlan 1240
- untagged ethernet 1/1/7 to 1/1/9
- exit
-end
-!
-! Option: VLAN 2100 (staff, as Trinity recommended)
-configure terminal
-vlan 1240
- no untagged ethernet 1/1/7 to 1/1/9
- exit
-vlan 2100
- untagged ethernet 1/1/7 to 1/1/9
- exit
-end
-! Bounce:
-! Part 1
-configure terminal
-interface ethernet 1/1/7 to 1/1/9
- disable
- exit
-end
-! Part 2 (after 10 seconds)
-configure terminal
-interface ethernet 1/1/7 to 1/1/9
- enable
- exit
-end
-! Verify with show vlan and show mac-address ethernet <port>, then write memory
-! Rollback:
-configure terminal
-vlan 2100
- no untagged ethernet 1/1/7 to 1/1/9
- exit
-vlan 1240
- untagged ethernet 1/1/7 to 1/1/9
- exit
-end
-!
 
 !=============================================================================
 ! OPTIONAL (only if Trinity ask): also shut the ports that go to VLAN 1, so
