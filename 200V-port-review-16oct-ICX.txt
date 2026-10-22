@@ -34,8 +34,8 @@
 !   200V-8           1/1/7   -> 2000  item 2, Trinity 22 Oct: UPS card 00:09:F5:32:DB:15 to 2000
 !   200V-8           1/1/8   -> 2000  item 2, Trinity 22 Oct: UPS card 00:09:F5:32:DB:D1 to 2000
 !   200V-8           1/1/9   -> 2000  item 2, Trinity 22 Oct: UPS card 00:09:F5:32:DB:14 to 2000
-!   The 3 UPS cards had 10.9.9.95 - .97 on 1240. On 2000 they need DHCP (or a
-!   fixed 10.21.0.x address outside .20 - .27) before they are reachable again
+!   The 3 UPS cards (10.9.9.95 - .97 on 1240) use DHCP: after the bounce they get
+!   new 10.21.0.x addresses. Check the leases on the DHCP server after the change
 !
 ! PENDING (do not paste until Trinity confirm; see the email of 21 Oct)
 !   200V-LT2-2       1/1/1   -> 1         item 3: not the LT2-2 uplink (1/1/12); confirm no switch is to be connected
