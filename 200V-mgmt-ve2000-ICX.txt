@@ -30,12 +30,6 @@
 ! Before starting
 !   - DONE: 10.21.0.20 - 10.21.0.27 are excluded from the 10.21.0.0/24 DHCP scope
 !     on 10.20.16.10 / 10.20.16.11 (confirmed by Trinity 22 Oct)
-!   - SRX (Sparx policy report): 10.21.0.0/24 is allowed to SmartZone
-!     (192.168.245.0/24, 192.168.81.0/24: TCP 22/443/8883/987, ICMP), SmartZone
-!     back to 10.21.0.0/24 (any), DNS 10.128.128.31/.60, public NTP and the
-!     Internet. NOT in the report: SSH/telnet from the admin jump host
-!     (10.128.132.10) to 10.21.0.0/24, and SNMP to/from 10.128.240.12. Without
-!     those, the switches are reachable only through SmartZone or from the core
 !   - Work from a session on trinity200V-core: the core is directly connected to
 !     10.21.0.0/24 (ve 2000), so 'telnet 10.21.0.x' from the core keeps working
 !     while the switch's default route changes. A session to the old
@@ -131,9 +125,7 @@ show manager status
 ! show manager status until it shows connected
 write memory
 show ntp associations
-! Expect the NTP server to become reachable within a few minutes (the SRX
-! allows 10.21.0.0/24 to the approved public NTP servers only; if
-! ntp1.trinity.unimelb.edu.au resolves to another address, NTP will fail)
+! Expect the NTP server to become reachable within a few minutes
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-stack-lv6 STEP 4 - remove the old address (after SmartZone shows 10.21.0.20)
@@ -233,9 +225,7 @@ show manager status
 ! show manager status until it shows connected
 write memory
 show ntp associations
-! Expect the NTP server to become reachable within a few minutes (the SRX
-! allows 10.21.0.0/24 to the approved public NTP servers only; if
-! ntp1.trinity.unimelb.edu.au resolves to another address, NTP will fail)
+! Expect the NTP server to become reachable within a few minutes
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-LT2-1 STEP 4 - remove the old address (after SmartZone shows 10.21.0.21)
@@ -335,9 +325,7 @@ show manager status
 ! show manager status until it shows connected
 write memory
 show ntp associations
-! Expect the NTP server to become reachable within a few minutes (the SRX
-! allows 10.21.0.0/24 to the approved public NTP servers only; if
-! ntp1.trinity.unimelb.edu.au resolves to another address, NTP will fail)
+! Expect the NTP server to become reachable within a few minutes
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-LT2-2 STEP 4 - remove the old address (after SmartZone shows 10.21.0.22)
@@ -436,9 +424,7 @@ show manager status
 ! show manager status until it shows connected
 write memory
 show ntp associations
-! Expect the NTP server to become reachable within a few minutes (the SRX
-! allows 10.21.0.0/24 to the approved public NTP servers only; if
-! ntp1.trinity.unimelb.edu.au resolves to another address, NTP will fail)
+! Expect the NTP server to become reachable within a few minutes
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-LT2-3 STEP 4 - remove the old address (after SmartZone shows 10.21.0.23)
@@ -536,9 +522,7 @@ show manager status
 ! show manager status until it shows connected
 write memory
 show ntp associations
-! Expect the NTP server to become reachable within a few minutes (the SRX
-! allows 10.21.0.0/24 to the approved public NTP servers only; if
-! ntp1.trinity.unimelb.edu.au resolves to another address, NTP will fail)
+! Expect the NTP server to become reachable within a few minutes
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-Tutorial-6.03 STEP 4 - remove the old address (after SmartZone shows 10.21.0.24)
@@ -640,9 +624,7 @@ show manager status
 ! show manager status until it shows connected
 write memory
 show ntp associations
-! Expect the NTP server to become reachable within a few minutes (the SRX
-! allows 10.21.0.0/24 to the approved public NTP servers only; if
-! ntp1.trinity.unimelb.edu.au resolves to another address, NTP will fail)
+! Expect the NTP server to become reachable within a few minutes
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-8 STEP 4 - remove the old address (after SmartZone shows 10.21.0.25)
@@ -741,9 +723,7 @@ show manager status
 ! show manager status until it shows connected
 write memory
 show ntp associations
-! Expect the NTP server to become reachable within a few minutes (the SRX
-! allows 10.21.0.0/24 to the approved public NTP servers only; if
-! ntp1.trinity.unimelb.edu.au resolves to another address, NTP will fail)
+! Expect the NTP server to become reachable within a few minutes
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-stack-lv4 STEP 4 - remove the old address (after SmartZone shows 10.21.0.26)
@@ -842,9 +822,7 @@ show manager status
 ! show manager status until it shows connected
 write memory
 show ntp associations
-! Expect the NTP server to become reachable within a few minutes (the SRX
-! allows 10.21.0.0/24 to the approved public NTP servers only; if
-! ntp1.trinity.unimelb.edu.au resolves to another address, NTP will fail)
+! Expect the NTP server to become reachable within a few minutes
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-stack-lv3 STEP 4 - remove the old address (after SmartZone shows 10.21.0.27)
@@ -884,6 +862,6 @@ write memory
 ! AFTER ALL SWITCHES
 !=============================================================================
 ! - SmartZone: all 8 switches online with their 10.21.0.x address
-! - Update the device list, the SNMP monitoring (10.128.240.12) and any jump-host
-!   or documentation entries from 192.168.122.x to 10.21.0.x
+! - Update the device list, monitoring and documentation entries from
+!   192.168.122.x to 10.21.0.x
 ! - VLAN 100 and its ve 100 interface stay until the legacy VLAN clean-up
