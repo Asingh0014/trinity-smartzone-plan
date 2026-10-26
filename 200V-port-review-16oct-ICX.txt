@@ -3,6 +3,7 @@
 ! Ruckus ICX, FastIron 10.0.10g
 ! Source: Trinity_switch_ports_16-10-2026.xlsx (SmartZone export 16 Oct 2026 08:31),
 !   Ports tab, column Q 'Trinity Recommendation'
+! Status: applied 26 Oct 2026 (6 - 11 pm) on all 8 switches, verified and saved
 !=============================================================================
 !
 ! Scope: 267 access ports on 8 switches

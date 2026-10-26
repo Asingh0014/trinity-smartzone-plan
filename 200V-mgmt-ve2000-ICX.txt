@@ -8,13 +8,13 @@
 !
 !   Switch                      Now (ve 100)      New (ve 2000)  
 !   switch-200V-stack-lv6       192.168.122.11/22 10.21.0.20/24  done 26 Oct
-!   switch-200V-LT2-1           192.168.122.12/22 10.21.0.21/24  
-!   switch-200V-LT2-2           192.168.122.13/22 10.21.0.22/24  
-!   switch-200V-LT2-3           192.168.122.14/22 10.21.0.23/24  
-!   switch-200V-Tutorial-6.03   192.168.122.15/22 10.21.0.24/24  
-!   switch-200V-8               192.168.122.16/22 10.21.0.25/24  
-!   switch-200V-stack-lv4       192.168.122.21/22 10.21.0.26/24  
-!   switch-200V-stack-lv3       192.168.122.22/22 10.21.0.27/24  
+!   switch-200V-LT2-1           192.168.122.12/22 10.21.0.21/24  done 26 Oct
+!   switch-200V-LT2-2           192.168.122.13/22 10.21.0.22/24  done 26 Oct
+!   switch-200V-LT2-3           192.168.122.14/22 10.21.0.23/24  done 26 Oct
+!   switch-200V-Tutorial-6.03   192.168.122.15/22 10.21.0.24/24  done 26 Oct
+!   switch-200V-8               192.168.122.16/22 10.21.0.25/24  done 26 Oct
+!   switch-200V-stack-lv4       192.168.122.21/22 10.21.0.26/24  done 26 Oct
+!   switch-200V-stack-lv3       192.168.122.22/22 10.21.0.27/24  done 26 Oct
 !
 ! What changes on each switch
 !   - interface ve 2000 gets the new address
@@ -34,7 +34,13 @@
 !     switches and the core cannot SSH to them). The SmartZone session DROPS at
 !     STEP 3: the tunnel re-forms from 10.21.0.x in 3 - 5 minutes, then reopen the
 !     CLI. Method proven on switch-200V-stack-lv6, 26 Oct 2026
-!   - Safety net: 'reload after 00:00:15' (dd:hh:mm = 15 minutes) before STEP 3.
+!   - Lessons from 26 Oct: the admin jump host reaches 10.21.0.x, so SSH to the new
+!     address straight after STEP 3. SmartZone accepted the switch only once the
+!     old ve 100 address was removed and the agent restarted (lv4 got HTTP 500
+!     from 192.168.245.100 until then), so STEP 3 now also removes the ve 100
+!     address and runs 'manager disable' / 'no manager disable'. Do not restart the
+!     agent again while it is in INIT/QUERY (each restart starts discovery over)
+!   - Safety net: 'reload after 00:00:10' (dd:hh:mm = 10 minutes) before STEP 3.
 !     If the switch does not come back, it reloads with the saved (old) config.
 !     Save Part A first (write memory), and run 'reload cancel' as soon as the
 !     switch is back in SmartZone
@@ -103,9 +109,9 @@ ping 10.21.0.20
 ! (expect replies; 'ping 192.168.245.100 source 10.21.0.1' was tested OK on 26 Oct)
 ! On the switch (SmartZone CLI): write memory, then
 write memory
-reload after 00:00:15
+reload after 00:00:10
 show reload
-! Expect a reload scheduled in about 15 minutes; if not, 'reload cancel' and stop
+! Expect a reload scheduled in about 10 minutes; if not, 'reload cancel' and stop
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-stack-lv6 STEP 3 - default route and management source (SmartZone CLI; the session drops)
@@ -115,8 +121,15 @@ ip route 0.0.0.0/0 10.21.0.1
 no ip route 0.0.0.0/0 192.168.120.1
 no management source-interface ve 100 protocol all
 management source-interface ve 2000 protocol all
+interface ve 100
+ no ip address 192.168.122.11 255.255.252.0
+ exit
+manager disable
+no manager disable
 end
-! Wait 3 - 5 minutes until SmartZone shows the switch online on 10.21.0.20, reopen its CLI
+! SSH from the admin jump host to 10.21.0.20 straight away (or wait 3 - 5 minutes and
+! reopen the SmartZone CLI). Leave the agent alone while it goes INIT > QUERY >
+! SSH CONNECTED (2 - 3 minutes)
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-stack-lv6 VERIFY
@@ -138,13 +151,8 @@ show ntp associations
 ! Expect the NTP server to become reachable within a few minutes
 !
 !-----------------------------------------------------------------------------
-! switch-200V-stack-lv6 STEP 4 - remove the old address (after SmartZone shows 10.21.0.20)
+! switch-200V-stack-lv6 STEP 4 - check the old address is gone
 !-----------------------------------------------------------------------------
-configure terminal
-interface ve 100
- no ip address 192.168.122.11 255.255.252.0
- exit
-end
 show ip interface
 ! Expect: ve 2000 10.21.0.20 is the only IP interface. Remove any other address
 ! noted in the PRE-CHECK the same way
@@ -209,9 +217,9 @@ ping 10.21.0.21
 ! (expect replies; 'ping 192.168.245.100 source 10.21.0.1' was tested OK on 26 Oct)
 ! On the switch (SmartZone CLI): write memory, then
 write memory
-reload after 00:00:15
+reload after 00:00:10
 show reload
-! Expect a reload scheduled in about 15 minutes; if not, 'reload cancel' and stop
+! Expect a reload scheduled in about 10 minutes; if not, 'reload cancel' and stop
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-LT2-1 STEP 3 - default route and management source (SmartZone CLI; the session drops)
@@ -221,8 +229,15 @@ ip route 0.0.0.0/0 10.21.0.1
 no ip route 0.0.0.0/0 192.168.120.1
 no management source-interface ve 100 protocol all
 management source-interface ve 2000 protocol all
+interface ve 100
+ no ip address 192.168.122.12 255.255.252.0
+ exit
+manager disable
+no manager disable
 end
-! Wait 3 - 5 minutes until SmartZone shows the switch online on 10.21.0.21, reopen its CLI
+! SSH from the admin jump host to 10.21.0.21 straight away (or wait 3 - 5 minutes and
+! reopen the SmartZone CLI). Leave the agent alone while it goes INIT > QUERY >
+! SSH CONNECTED (2 - 3 minutes)
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-LT2-1 VERIFY
@@ -244,13 +259,8 @@ show ntp associations
 ! Expect the NTP server to become reachable within a few minutes
 !
 !-----------------------------------------------------------------------------
-! switch-200V-LT2-1 STEP 4 - remove the old address (after SmartZone shows 10.21.0.21)
+! switch-200V-LT2-1 STEP 4 - check the old address is gone
 !-----------------------------------------------------------------------------
-configure terminal
-interface ve 100
- no ip address 192.168.122.12 255.255.252.0
- exit
-end
 show ip interface
 ! Expect: ve 2000 10.21.0.21 is the only IP interface. Remove any other address
 ! noted in the PRE-CHECK the same way
@@ -315,9 +325,9 @@ ping 10.21.0.22
 ! (expect replies; 'ping 192.168.245.100 source 10.21.0.1' was tested OK on 26 Oct)
 ! On the switch (SmartZone CLI): write memory, then
 write memory
-reload after 00:00:15
+reload after 00:00:10
 show reload
-! Expect a reload scheduled in about 15 minutes; if not, 'reload cancel' and stop
+! Expect a reload scheduled in about 10 minutes; if not, 'reload cancel' and stop
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-LT2-2 STEP 3 - default route and management source (SmartZone CLI; the session drops)
@@ -327,8 +337,15 @@ ip route 0.0.0.0/0 10.21.0.1
 no ip route 0.0.0.0/0 192.168.120.1
 no management source-interface ve 100 protocol all
 management source-interface ve 2000 protocol all
+interface ve 100
+ no ip address 192.168.122.13 255.255.252.0
+ exit
+manager disable
+no manager disable
 end
-! Wait 3 - 5 minutes until SmartZone shows the switch online on 10.21.0.22, reopen its CLI
+! SSH from the admin jump host to 10.21.0.22 straight away (or wait 3 - 5 minutes and
+! reopen the SmartZone CLI). Leave the agent alone while it goes INIT > QUERY >
+! SSH CONNECTED (2 - 3 minutes)
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-LT2-2 VERIFY
@@ -350,13 +367,8 @@ show ntp associations
 ! Expect the NTP server to become reachable within a few minutes
 !
 !-----------------------------------------------------------------------------
-! switch-200V-LT2-2 STEP 4 - remove the old address (after SmartZone shows 10.21.0.22)
+! switch-200V-LT2-2 STEP 4 - check the old address is gone
 !-----------------------------------------------------------------------------
-configure terminal
-interface ve 100
- no ip address 192.168.122.13 255.255.252.0
- exit
-end
 show ip interface
 ! Expect: ve 2000 10.21.0.22 is the only IP interface. Remove any other address
 ! noted in the PRE-CHECK the same way
@@ -421,9 +433,9 @@ ping 10.21.0.23
 ! (expect replies; 'ping 192.168.245.100 source 10.21.0.1' was tested OK on 26 Oct)
 ! On the switch (SmartZone CLI): write memory, then
 write memory
-reload after 00:00:15
+reload after 00:00:10
 show reload
-! Expect a reload scheduled in about 15 minutes; if not, 'reload cancel' and stop
+! Expect a reload scheduled in about 10 minutes; if not, 'reload cancel' and stop
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-LT2-3 STEP 3 - default route and management source (SmartZone CLI; the session drops)
@@ -432,8 +444,15 @@ configure terminal
 ip route 0.0.0.0/0 10.21.0.1
 no ip route 0.0.0.0/0 192.168.120.1
 management source-interface ve 2000 protocol all
+interface ve 100
+ no ip address 192.168.122.14 255.255.252.0
+ exit
+manager disable
+no manager disable
 end
-! Wait 3 - 5 minutes until SmartZone shows the switch online on 10.21.0.23, reopen its CLI
+! SSH from the admin jump host to 10.21.0.23 straight away (or wait 3 - 5 minutes and
+! reopen the SmartZone CLI). Leave the agent alone while it goes INIT > QUERY >
+! SSH CONNECTED (2 - 3 minutes)
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-LT2-3 VERIFY
@@ -455,13 +474,8 @@ show ntp associations
 ! Expect the NTP server to become reachable within a few minutes
 !
 !-----------------------------------------------------------------------------
-! switch-200V-LT2-3 STEP 4 - remove the old address (after SmartZone shows 10.21.0.23)
+! switch-200V-LT2-3 STEP 4 - check the old address is gone
 !-----------------------------------------------------------------------------
-configure terminal
-interface ve 100
- no ip address 192.168.122.14 255.255.252.0
- exit
-end
 show ip interface
 ! Expect: ve 2000 10.21.0.23 is the only IP interface. Remove any other address
 ! noted in the PRE-CHECK the same way
@@ -525,9 +539,9 @@ ping 10.21.0.24
 ! (expect replies; 'ping 192.168.245.100 source 10.21.0.1' was tested OK on 26 Oct)
 ! On the switch (SmartZone CLI): write memory, then
 write memory
-reload after 00:00:15
+reload after 00:00:10
 show reload
-! Expect a reload scheduled in about 15 minutes; if not, 'reload cancel' and stop
+! Expect a reload scheduled in about 10 minutes; if not, 'reload cancel' and stop
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-Tutorial-6.03 STEP 3 - default route and management source (SmartZone CLI; the session drops)
@@ -536,8 +550,15 @@ configure terminal
 ip route 0.0.0.0/0 10.21.0.1
 no ip route 0.0.0.0/0 192.168.120.1
 management source-interface ve 2000 protocol all
+interface ve 100
+ no ip address 192.168.122.15 255.255.252.0
+ exit
+manager disable
+no manager disable
 end
-! Wait 3 - 5 minutes until SmartZone shows the switch online on 10.21.0.24, reopen its CLI
+! SSH from the admin jump host to 10.21.0.24 straight away (or wait 3 - 5 minutes and
+! reopen the SmartZone CLI). Leave the agent alone while it goes INIT > QUERY >
+! SSH CONNECTED (2 - 3 minutes)
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-Tutorial-6.03 VERIFY
@@ -559,13 +580,8 @@ show ntp associations
 ! Expect the NTP server to become reachable within a few minutes
 !
 !-----------------------------------------------------------------------------
-! switch-200V-Tutorial-6.03 STEP 4 - remove the old address (after SmartZone shows 10.21.0.24)
+! switch-200V-Tutorial-6.03 STEP 4 - check the old address is gone
 !-----------------------------------------------------------------------------
-configure terminal
-interface ve 100
- no ip address 192.168.122.15 255.255.252.0
- exit
-end
 show ip interface
 ! Expect: ve 2000 10.21.0.24 is the only IP interface. Remove any other address
 ! noted in the PRE-CHECK the same way
@@ -629,9 +645,9 @@ ping 10.21.0.25
 ! (expect replies; 'ping 192.168.245.100 source 10.21.0.1' was tested OK on 26 Oct)
 ! On the switch (SmartZone CLI): write memory, then
 write memory
-reload after 00:00:15
+reload after 00:00:10
 show reload
-! Expect a reload scheduled in about 15 minutes; if not, 'reload cancel' and stop
+! Expect a reload scheduled in about 10 minutes; if not, 'reload cancel' and stop
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-8 STEP 3 - default route and management source (SmartZone CLI; the session drops)
@@ -644,8 +660,15 @@ management source-interface ve 2000 protocol all
 ! switch-200V-8 has no DNS server configured (it cannot resolve the NTP
 ! server name); add the same DNS servers as the other switches:
 ip dns server-address 10.128.128.31 10.128.128.60
+interface ve 100
+ no ip address 192.168.122.16 255.255.252.0
+ exit
+manager disable
+no manager disable
 end
-! Wait 3 - 5 minutes until SmartZone shows the switch online on 10.21.0.25, reopen its CLI
+! SSH from the admin jump host to 10.21.0.25 straight away (or wait 3 - 5 minutes and
+! reopen the SmartZone CLI). Leave the agent alone while it goes INIT > QUERY >
+! SSH CONNECTED (2 - 3 minutes)
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-8 VERIFY
@@ -667,13 +690,8 @@ show ntp associations
 ! Expect the NTP server to become reachable within a few minutes
 !
 !-----------------------------------------------------------------------------
-! switch-200V-8 STEP 4 - remove the old address (after SmartZone shows 10.21.0.25)
+! switch-200V-8 STEP 4 - check the old address is gone
 !-----------------------------------------------------------------------------
-configure terminal
-interface ve 100
- no ip address 192.168.122.16 255.255.252.0
- exit
-end
 show ip interface
 ! Expect: ve 2000 10.21.0.25 is the only IP interface. Remove any other address
 ! noted in the PRE-CHECK the same way
@@ -738,9 +756,9 @@ ping 10.21.0.26
 ! (expect replies; 'ping 192.168.245.100 source 10.21.0.1' was tested OK on 26 Oct)
 ! On the switch (SmartZone CLI): write memory, then
 write memory
-reload after 00:00:15
+reload after 00:00:10
 show reload
-! Expect a reload scheduled in about 15 minutes; if not, 'reload cancel' and stop
+! Expect a reload scheduled in about 10 minutes; if not, 'reload cancel' and stop
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-stack-lv4 STEP 3 - default route and management source (SmartZone CLI; the session drops)
@@ -749,8 +767,15 @@ configure terminal
 ip route 0.0.0.0/0 10.21.0.1
 no ip route 0.0.0.0/0 192.168.120.1
 management source-interface ve 2000 protocol all
+interface ve 100
+ no ip address 192.168.122.21 255.255.252.0
+ exit
+manager disable
+no manager disable
 end
-! Wait 3 - 5 minutes until SmartZone shows the switch online on 10.21.0.26, reopen its CLI
+! SSH from the admin jump host to 10.21.0.26 straight away (or wait 3 - 5 minutes and
+! reopen the SmartZone CLI). Leave the agent alone while it goes INIT > QUERY >
+! SSH CONNECTED (2 - 3 minutes)
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-stack-lv4 VERIFY
@@ -772,13 +797,8 @@ show ntp associations
 ! Expect the NTP server to become reachable within a few minutes
 !
 !-----------------------------------------------------------------------------
-! switch-200V-stack-lv4 STEP 4 - remove the old address (after SmartZone shows 10.21.0.26)
+! switch-200V-stack-lv4 STEP 4 - check the old address is gone
 !-----------------------------------------------------------------------------
-configure terminal
-interface ve 100
- no ip address 192.168.122.21 255.255.252.0
- exit
-end
 show ip interface
 ! Expect: ve 2000 10.21.0.26 is the only IP interface. Remove any other address
 ! noted in the PRE-CHECK the same way
@@ -842,9 +862,9 @@ ping 10.21.0.27
 ! (expect replies; 'ping 192.168.245.100 source 10.21.0.1' was tested OK on 26 Oct)
 ! On the switch (SmartZone CLI): write memory, then
 write memory
-reload after 00:00:15
+reload after 00:00:10
 show reload
-! Expect a reload scheduled in about 15 minutes; if not, 'reload cancel' and stop
+! Expect a reload scheduled in about 10 minutes; if not, 'reload cancel' and stop
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-stack-lv3 STEP 3 - default route and management source (SmartZone CLI; the session drops)
@@ -854,8 +874,15 @@ ip route 0.0.0.0/0 10.21.0.1
 no ip route 0.0.0.0/0 192.168.120.1
 no management source-interface ve 100 protocol all
 management source-interface ve 2000 protocol all
+interface ve 100
+ no ip address 192.168.122.22 255.255.252.0
+ exit
+manager disable
+no manager disable
 end
-! Wait 3 - 5 minutes until SmartZone shows the switch online on 10.21.0.27, reopen its CLI
+! SSH from the admin jump host to 10.21.0.27 straight away (or wait 3 - 5 minutes and
+! reopen the SmartZone CLI). Leave the agent alone while it goes INIT > QUERY >
+! SSH CONNECTED (2 - 3 minutes)
 !
 !-----------------------------------------------------------------------------
 ! switch-200V-stack-lv3 VERIFY
@@ -877,13 +904,8 @@ show ntp associations
 ! Expect the NTP server to become reachable within a few minutes
 !
 !-----------------------------------------------------------------------------
-! switch-200V-stack-lv3 STEP 4 - remove the old address (after SmartZone shows 10.21.0.27)
+! switch-200V-stack-lv3 STEP 4 - check the old address is gone
 !-----------------------------------------------------------------------------
-configure terminal
-interface ve 100
- no ip address 192.168.122.22 255.255.252.0
- exit
-end
 show ip interface
 ! Expect: ve 2000 10.21.0.27 is the only IP interface. Remove any other address
 ! noted in the PRE-CHECK the same way
